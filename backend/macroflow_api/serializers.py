@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, BodyWeight, MuscleGroup, Exercise, WorkoutSession, ExerciseSet, FoodItem, FoodLog, WaterLog
+from .models import User, BodyWeight, MuscleGroup, Exercise, WorkoutSession, ExerciseSet, FoodItem, FoodLog, WaterLog, NutritionLog, WorkoutLog, SavedRecipe
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -63,4 +63,19 @@ class FoodLogSerializer(serializers.ModelSerializer):
 class WaterLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = WaterLog
+        fields = '__all__'
+
+class NutritionLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NutritionLog
+        fields = '__all__'
+
+class WorkoutLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkoutLog
+        fields = '__all__'
+
+class SavedRecipeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SavedRecipe
         fields = '__all__'
