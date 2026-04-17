@@ -9,6 +9,8 @@ import { useAuth } from '../../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { EXERCISE_DATABASE } from './workout';
+import { setupHealthConnect } from '../../src/utils/biometrics';
+import Constants from 'expo-constants';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -109,6 +111,7 @@ export default function DashboardScreen() {
   
   const [selectedDayContent, setSelectedDayContent] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [heartRate, setHeartRate] = useState('--');
 
   const { themePreference } = useAuth();
   const systemColorScheme = useColorScheme();
@@ -128,6 +131,21 @@ export default function DashboardScreen() {
       fetchWorkoutHistory();
     }, [ifStart, ifEnd, isIfEnabled])
   );
+
+  useEffect(() => {
+    setupHealthConnect();
+  }, []);
+
+  useEffect(() => {
+    if (Constants.appOwnership !== 'expo') return;
+
+    const interval = setInterval(() => {
+      const mockRate = Math.floor(Math.random() * (70 - 60 + 1)) + 60;
+      setHeartRate(mockRate.toString());
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const loadIfSettings = async () => {
     try {
@@ -376,6 +394,12 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Heart Rate Metric Card */}
+      <View style={[styles.heartRateCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
+        <Text style={styles.heartRateLabel}>HEART RATE</Text>
+        <Text style={styles.heartRateValue}>{heartRate} BPM</Text>
+      </View>
 
       <CalendarHeatMap 
         history={workoutHistory} 
@@ -780,8 +804,29 @@ const styles = StyleSheet.create({
   },
   enableLink: {
     color: '#FF2D55',
-    fontWeight: 'bold',
     fontSize: 14,
+  },
+  heartRateCard: {
+    backgroundColor: '#1C1C1E',
+    marginHorizontal: 20,
+    marginTop: 15,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  heartRateLabel: {
+    color: '#8E8E93',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  heartRateValue: {
+    color: '#FF2D55',
+    fontSize: 36,
+    fontWeight: '900',
   },
   calendarCard: {
     marginHorizontal: 20,
