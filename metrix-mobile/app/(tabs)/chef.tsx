@@ -218,7 +218,7 @@ export default function ChefScreen() {
               disabled={isSaved || saveLoading}
             >
               {saveLoading ? (
-                <ActivityIndicator color={isDark ? "#fff" : "#000"} />
+                <ActivityIndicator color={currentThemeColors.text} />
               ) : (
                 <Text style={styles.buttonText}>{isSaved ? 'Saved!' : 'Save to Cookbook'}</Text>
               )}

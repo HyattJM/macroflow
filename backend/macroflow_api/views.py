@@ -152,9 +152,45 @@ def scan_keto(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_nutrition_logs(request):
-    logs = NutritionLog.objects.filter(user=request.user).order_by('-created_at')
+    logs = NutritionLog.objects.filter(user=request.user)
+
+    date_param = request.query_params.get('date')
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+
+    if date_param:
+        logs = logs.filter(created_at__date=date_param)
+    elif start_date or end_date:
+        if start_date:
+            logs = logs.filter(created_at__date__gte=start_date)
+        if end_date:
+            logs = logs.filter(created_at__date__lte=end_date)
+    else:
+        today = timezone.localdate()
+        logs = logs.filter(created_at__date=today)
+
+    logs = logs.order_by('-created_at')
+
+    totals = logs.aggregate(
+        total_calories=Sum('calories'),
+        total_protein=Sum('protein'),
+        total_carbs=Sum('carbs'),
+        total_fat=Sum('fat')
+    )
+
+    aggregated_totals = {
+        'calories': totals['total_calories'] or 0,
+        'protein': round(totals['total_protein'], 1) if totals['total_protein'] is not None else 0.0,
+        'fat': round(totals['total_fat'], 1) if totals['total_fat'] is not None else 0.0,
+        'net_carbs': round(totals['total_carbs'], 1) if totals['total_carbs'] is not None else 0.0,
+    }
+
     serializer = NutritionLogSerializer(logs, many=True)
-    return Response({"status": "success", "data": serializer.data})
+    return Response({
+        "status": "success",
+        "data": serializer.data,
+        "totals": aggregated_totals
+    })
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

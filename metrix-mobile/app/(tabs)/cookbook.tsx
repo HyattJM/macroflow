@@ -210,7 +210,7 @@ export default function CookbookScreen() {
                 </View>
                 <View style={styles.detailMacroBox}>
                   <Text style={[styles.detailMacroLabel, { color: currentThemeColors.textSecondary }]}>Fat</Text>
-                  <Text style={[styles.detailMacroValue, { color: currentThemeColors.error }]}>{selectedRecipe?.fat}g</Text>
+                  <Text style={[styles.detailMacroValue, { color: currentThemeColors.primary }]}>{selectedRecipe?.fat}g</Text>
                 </View>
                 <View style={styles.detailMacroBox}>
                   <Text style={[styles.detailMacroLabel, { color: currentThemeColors.textSecondary }]}>Net Carbs</Text>
