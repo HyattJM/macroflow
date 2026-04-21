@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView, Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../src/context/AuthContext';
-import { useColorScheme } from '../../hooks/use-color-scheme';
-import { Colors } from '../../constants/theme';
+import { useAppTheme } from '../../src/context/ThemeContext';
 
 // Helper to format time for display
 const formatTime = (date: Date) => {
@@ -27,10 +27,9 @@ const parseTime = (timeStr: string) => {
 };
 
 export default function SettingsScreen() {
-  const { themePreference, updateThemePreference } = useAuth();
-  const systemColorScheme = useColorScheme();
-  const activeTheme = themePreference === 'system' ? systemColorScheme : themePreference;
-  const isDark = activeTheme === 'dark';
+  const { themeName, currentThemeColors, setThemeName, layout, typography } = useAppTheme();
+  const { updateThemePreference, logout } = useAuth(); 
+  const isDark = currentThemeColors.isDark;
 
   const [isEnabled, setIsEnabled] = useState(true);
   const [protocol, setProtocol] = useState('16/8'); // '12/12', '16/8', 'Custom'
@@ -113,15 +112,18 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: isDark ? '#000' : '#f5f5f5' }]}>
-      <Text style={[styles.title, { color: isDark ? '#fff' : '#000' }]}>Settings</Text>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: currentThemeColors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
+      <Text style={[styles.title, { color: currentThemeColors.text, marginTop: layout.spacing.xl }]}>Settings</Text>
 
-      <View style={[styles.section, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-        <Text style={[styles.sectionTitle, { color: isDark ? '#FF2D55' : '#007AFF' }]}>Intermittent Fasting</Text>
+      <View style={[styles.section, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+        <Text style={[styles.sectionTitle, { color: currentThemeColors.primary }]}>Intermittent Fasting</Text>
         
         <View style={styles.settingRow}>
-          <Text style={[styles.settingLabel, { color: isDark ? '#fff' : '#333' }]}>Enable Timer</Text>
-          <Switch value={isEnabled} onValueChange={handleToggle} trackColor={{ false: '#333', true: '#34C759' }} />
+          <Text style={[styles.settingLabel, { color: currentThemeColors.text }]}>Enable Timer</Text>
+          <Switch value={isEnabled} onValueChange={handleToggle} trackColor={{ false: '#333', true: currentThemeColors.accent }} />
         </View>
 
         {isEnabled && (
@@ -130,30 +132,33 @@ export default function SettingsScreen() {
             <View style={styles.protocolRow}>
               {['12/12', '16/8', 'Custom'].map((p) => (
                 <TouchableOpacity 
-                  key={p} 
-                  style={[
-                    styles.protocolBtn, 
-                    { backgroundColor: isDark ? '#2C2C2E' : '#f0f0f0' },
-                    protocol === p && { backgroundColor: isDark ? '#FF2D55' : '#007AFF' }
-                  ]}
-                  onPress={() => handleProtocolChange(p)}
-                >
-                  <Text style={[styles.protocolText, protocol === p && { color: '#fff' }]}>{p}</Text>
-                </TouchableOpacity>
+                   key={p} 
+                   style={[
+                     styles.protocolBtn, 
+                     { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.border },
+                     protocol === p && { backgroundColor: currentThemeColors.primary, borderColor: currentThemeColors.primary }
+                   ]}
+                   onPress={() => {
+                     handleProtocolChange(p);
+                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                   }}
+                 >
+                   <Text style={[styles.protocolText, { color: currentThemeColors.textSecondary }, protocol === p && { color: '#fff' }]}>{p}</Text>
+                 </TouchableOpacity>
               ))}
             </View>
 
             <View style={styles.timeSection}>
-              <TouchableOpacity style={[styles.timeBox, { backgroundColor: isDark ? '#2C2C2E' : '#f9f9f9' }]} onPress={() => setShowStartPicker(true)}>
+              <TouchableOpacity style={[styles.timeBox, { backgroundColor: currentThemeColors.surface }]} onPress={() => setShowStartPicker(true)}>
                 <Text style={styles.timeLabel}>Feeding Starts</Text>
-                <Text style={[styles.timeValue, { color: isDark ? '#fff' : '#000' }]}>{formatTime(startTime)}</Text>
+                <Text style={[styles.timeValue, { color: currentThemeColors.text }]}>{formatTime(startTime)}</Text>
               </TouchableOpacity>
 
-              <Ionicons name="arrow-forward" size={20} color={isDark ? "#444" : "#ccc"} style={{ marginHorizontal: 10 }} />
+              <Ionicons name="arrow-forward" size={20} color={currentThemeColors.textSecondary} style={{ marginHorizontal: 10 }} />
 
-              <TouchableOpacity style={[styles.timeBox, { backgroundColor: isDark ? '#2C2C2E' : '#f9f9f9' }]} onPress={() => setShowEndPicker(true)}>
+              <TouchableOpacity style={[styles.timeBox, { backgroundColor: currentThemeColors.surface }]} onPress={() => setShowEndPicker(true)}>
                 <Text style={styles.timeLabel}>Feeding Ends</Text>
-                <Text style={[styles.timeValue, { color: isDark ? '#fff' : '#000' }]}>{formatTime(endTime)}</Text>
+                <Text style={[styles.timeValue, { color: currentThemeColors.text }]}>{formatTime(endTime)}</Text>
               </TouchableOpacity>
             </View>
 
@@ -180,46 +185,168 @@ export default function SettingsScreen() {
         )}
       </View>
 
-      <View style={[styles.section, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-        <Text style={[styles.sectionTitle, { color: isDark ? '#FF2D55' : '#007AFF' }]}>Appearance</Text>
+      <View style={[styles.section, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+        <Text style={[styles.sectionTitle, { color: currentThemeColors.primary }]}>Appearance</Text>
         <View style={styles.protocolRow}>
-          {['Light', 'Dark', 'System'].map((mode) => (
+          {[
+            { id: 'defaultDark', label: 'Classic' },
+            { id: 'deepSeaDark', label: 'Ocean' },
+            { id: 'synthWave', label: 'Synth' },
+            { id: 'classicLight', label: 'Light' }
+          ].map((theme) => (
             <TouchableOpacity 
-              key={mode} 
+              key={theme.id} 
               style={[
                 styles.protocolBtn, 
-                { backgroundColor: isDark ? '#2C2C2E' : '#f0f0f0' },
-                themePreference === mode.toLowerCase() && { backgroundColor: isDark ? '#FF2D55' : '#007AFF' }
+                { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.border },
+                themeName === theme.id && { backgroundColor: currentThemeColors.primary, borderColor: currentThemeColors.primary }
               ]}
-              onPress={() => updateThemePreference(mode.toLowerCase() as any)}
+              onPress={() => {
+                setThemeName(theme.id);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
             >
               <Text style={[
                 styles.protocolText, 
-                themePreference === mode.toLowerCase() && { color: '#fff' }
-              ]}>{mode}</Text>
+                { color: currentThemeColors.textSecondary },
+                themeName === theme.id && { color: '#fff' }
+              ]}>{theme.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
+
+      <View style={[styles.section, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+        <Text style={[styles.sectionTitle, { color: currentThemeColors.error }]}>Account</Text>
+        <TouchableOpacity 
+          style={[styles.dangerButton, { backgroundColor: currentThemeColors.error + '10', borderColor: currentThemeColors.error }]} 
+          onPress={() => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            Alert.alert("Logout", "Are you sure you want to log out?", [
+              { text: "Cancel", style: "cancel" },
+              { text: "Logout", style: "destructive", onPress: logout }
+            ]);
+          }}
+        >
+          <Ionicons name="log-out-outline" size={20} color={currentThemeColors.error} />
+          <Text style={[styles.dangerButtonText, { color: currentThemeColors.error }]}>Log Out</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.dangerButton, { backgroundColor: currentThemeColors.error + '10', borderColor: currentThemeColors.error, marginTop: 12 }]} 
+          onPress={() => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            Alert.alert(
+              "Reset Account",
+              "This will wipe your profile and onboarding data. This action cannot be undone.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Reset", style: "destructive", onPress: logout }
+              ]
+            );
+          }}
+        >
+          <Ionicons name="refresh-outline" size={20} color={currentThemeColors.error} />
+          <Text style={[styles.dangerButtonText, { color: currentThemeColors.error }]}>Reset All Data</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000', paddingTop: 60 },
-  title: { fontSize: 34, fontWeight: 'bold', color: '#fff', paddingHorizontal: 20, marginBottom: 20 },
-  section: { backgroundColor: '#1C1C1E', marginHorizontal: 20, borderRadius: 14, padding: 16, marginBottom: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#FF2D55', marginBottom: 20 },
-  settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  settingLabel: { fontSize: 16, color: '#fff' },
-  subLabel: { fontSize: 14, color: '#8E8E93', marginBottom: 12, textTransform: 'uppercase' },
-  protocolRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-  protocolBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8, backgroundColor: '#2C2C2E', marginHorizontal: 4 },
-  protocolBtnActive: { backgroundColor: '#FF2D55' },
-  protocolText: { color: '#8E8E93', fontWeight: 'bold' },
-  protocolTextActive: { color: '#fff' },
-  timeSection: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  timeBox: { flex: 1, backgroundColor: '#2C2C2E', padding: 12, borderRadius: 10, alignItems: 'center' },
-  timeLabel: { fontSize: 12, color: '#8E8E93', marginBottom: 4 },
-  timeValue: { fontSize: 18, color: '#fff', fontWeight: 'bold' }
+  container: { 
+    flex: 1, 
+  },
+  title: { 
+    fontSize: 34, 
+    fontWeight: '900', 
+    paddingHorizontal: 20, 
+    marginBottom: 24 
+  },
+  section: { 
+    marginHorizontal: 16, 
+    borderRadius: 20, 
+    padding: 16, 
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  sectionTitle: { 
+    fontSize: 14, 
+    fontWeight: '900', 
+    marginBottom: 20,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  settingRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
+  settingLabel: { 
+    fontSize: 16, 
+    fontWeight: '600'
+  },
+  subLabel: { 
+    fontSize: 12, 
+    fontWeight: '700',
+    marginBottom: 12, 
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  protocolRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginBottom: 12,
+    gap: 8,
+  },
+  protocolBtn: { 
+    flex: 1, 
+    paddingVertical: 12, 
+    alignItems: 'center', 
+    borderRadius: 12, 
+    borderWidth: 1,
+  },
+  protocolText: { 
+    fontSize: 14,
+    fontWeight: '800' 
+  },
+  timeSection: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  timeBox: { 
+    flex: 1, 
+    padding: 16, 
+    borderRadius: 14, 
+    alignItems: 'center' 
+  },
+  timeLabel: { 
+    fontSize: 11, 
+    fontWeight: '700',
+    marginBottom: 4,
+    textTransform: 'uppercase'
+  },
+  timeValue: { 
+    fontSize: 18, 
+    fontWeight: '900' 
+  },
+  dangerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
+  dangerButtonText: {
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: '900',
+  }
 });

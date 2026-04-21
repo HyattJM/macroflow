@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Dimensions, DeviceEventEmitter, TouchableOpacity, Alert, Modal } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import apiClient from '../../src/api/apiClient';
@@ -7,7 +7,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from '../../hooks/use-color-scheme';
+import { useAppTheme } from '../../src/context/ThemeContext';
 import { EXERCISE_DATABASE } from './workout';
 import { setupHealthConnect } from '../../src/utils/biometrics';
 import Constants from 'expo-constants';
@@ -108,15 +108,21 @@ export default function DashboardScreen() {
   const [isIfEnabled, setIsIfEnabled] = useState(true);
   const [ifStart, setIfStart] = useState('21:00');
   const [ifEnd, setIfEnd] = useState('09:00');
-  
-  const [selectedDayContent, setSelectedDayContent] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
   const [heartRate, setHeartRate] = useState('--');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedDayContent, setSelectedDayContent] = useState(null);
 
-  const { themePreference } = useAuth();
-  const systemColorScheme = useColorScheme();
-  const activeTheme = themePreference === 'system' ? systemColorScheme : themePreference;
-  const isDark = activeTheme === 'dark';
+  const totalVolume = useMemo(() => {
+    return workoutHistory.reduce((acc, section) => {
+      const sectionVol = section.data.reduce((sAcc, item) => {
+        return sAcc + (item.weight || 0) * (item.reps || 0); 
+      }, 0);
+      return acc + sectionVol;
+    }, 0);
+  }, [workoutHistory]);
+  
+  const { currentThemeColors, typography, layout } = useAppTheme();
+  const isDark = currentThemeColors.isDark;
 
   const router = useRouter();
   const { logout } = useAuth();
@@ -270,32 +276,6 @@ export default function DashboardScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    console.log("Starting logout process...");
-    try {
-      await logout();
-    } catch (e) {
-      console.error("LOGOUT_ERROR:", e);
-    }
-  };
-
-  const handleResetData = () => {
-    Alert.alert(
-      "Reset Account?",
-      "This will wipe your profile and onboarding data. Are you sure?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Reset", 
-          style: "destructive", 
-          onPress: async () => {
-            await logout();
-          }
-        }
-      ]
-    );
-  };
-
   if (loading) {
     return (
       <View style={styles.center}>
@@ -344,61 +324,83 @@ export default function DashboardScreen() {
   ];
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: isDark ? '#000' : '#f5f5f5' }]}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: currentThemeColors.background }]}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Session Navigation Header */}
-      <View style={styles.sessionHeader}>
-        <TouchableOpacity onPress={() => router.push('/settings')} style={[styles.iconHeaderBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
-          <Ionicons name="settings-outline" size={20} color={isDark ? "#8E8E93" : "#555"} />
-        </TouchableOpacity>
+      <View style={[styles.sessionHeader, { marginTop: layout.spacing.xl }]}>
+        <View>
+          <Text style={[styles.greetingText, { color: currentThemeColors.textSecondary }]}>Welcome back,</Text>
+          <Text style={[styles.nameText, { color: currentThemeColors.text }]}>Champion</Text>
+        </View>
         <View style={{ flex: 1 }} />
-        <TouchableOpacity onPress={handleLogout} style={[styles.headerBtn, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-          <Text style={styles.logoutHeaderText}>Logout</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleResetData} style={[styles.headerBtn, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-          <Text style={styles.resetHeaderText}>Reset Data</Text>
+        <TouchableOpacity 
+          onPress={() => router.push('/settings')} 
+          style={[styles.iconHeaderBtn, { backgroundColor: currentThemeColors.card, ...layout.shadows.sm }]}
+        >
+          <Ionicons name="settings-outline" size={24} color={currentThemeColors.primary} />
         </TouchableOpacity>
       </View>
 
       {/* AI Token Display */}
-      <View style={[styles.tokenCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-        <Text style={[styles.tokenHeader, { color: isDark ? '#FF2D55' : '#007AFF' }]}>FREE AI SCANS</Text>
-        <View style={styles.progressHeader}>
-          <Text style={[styles.tokenCount, { color: isDark ? '#fff' : '#000' }]}>{tokens}</Text>
-          <Text style={styles.tokenLabel}>API calls left</Text>
+      <View style={[styles.tokenCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+        <View style={styles.tokenInfo}>
+          <View style={[styles.tokenIconBadge, { backgroundColor: currentThemeColors.primary + '15' }]}>
+            <Ionicons name="sparkles" size={24} color={currentThemeColors.primary} />
+          </View>
+          <View style={{ marginLeft: layout.spacing.md }}>
+            <Text style={[styles.tokenHeader, { color: currentThemeColors.primary }]}>AI POWER-UP</Text>
+            <Text style={[styles.tokenSubText, { color: currentThemeColors.textSecondary }]}>{tokens} scans remaining</Text>
+          </View>
+        </View>
+        <View style={[styles.tokenProgressBar, { backgroundColor: currentThemeColors.surface }]}>
+          <View style={[styles.tokenProgressFill, { width: `${(tokens / 50) * 100}%`, backgroundColor: currentThemeColors.primary }]} />
         </View>
       </View>
 
       {/* Intermittent Fasting Card */}
       {isIfEnabled ? (
         <TouchableOpacity 
-          activeOpacity={0.7}
+          activeOpacity={0.8}
           onPress={() => router.push('/settings')}
-          style={[styles.fastingCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }, isFeedingWindow ? styles.feedingBorder : styles.fastingBorder]}
+          style={[
+            styles.fastingCard, 
+            { backgroundColor: currentThemeColors.card, borderColor: isFeedingWindow ? currentThemeColors.success + '40' : currentThemeColors.warning + '40' },
+            layout.shadows.md
+          ]}
         >
           <View style={styles.fastingHeader}>
-            <View style={[styles.statusDot, { backgroundColor: isFeedingWindow ? '#34C759' : '#FF9500' }]} />
-            <Text style={[styles.fastingStatus, { color: isFeedingWindow ? '#34C759' : '#FF9500' }]}>
+            <View style={[styles.statusDot, { backgroundColor: isFeedingWindow ? currentThemeColors.success : currentThemeColors.warning }]} />
+            <Text style={[styles.fastingStatus, { color: isFeedingWindow ? currentThemeColors.success : currentThemeColors.warning }]}>
               {isFeedingWindow ? 'Feeding Phase Open' : 'Fasting Phase'}
             </Text>
           </View>
           <View style={styles.fastingContent}>
-            <Text style={styles.timeLabel}>Ends in</Text>
-            <Text style={[styles.timeValue, { color: isDark ? '#fff' : '#000' }]}>{timeLeft}</Text>
+            <View>
+              <Text style={[styles.timeLabel, { color: currentThemeColors.textSecondary }]}>Ends in</Text>
+              <Text style={[styles.timeValue, { color: currentThemeColors.text }]}>{timeLeft}</Text>
+            </View>
+            <Ionicons name={isFeedingWindow ? "restaurant-outline" : "moon-outline"} size={40} color={isFeedingWindow ? currentThemeColors.success : currentThemeColors.warning} opacity={0.6} />
           </View>
         </TouchableOpacity>
       ) : (
-        <View style={[styles.fastingDisabledCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-          <Text style={styles.fastingDisabledText}>Intermittent Fasting is disabled.</Text>
+        <View style={[styles.fastingDisabledCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border }]}>
+          <Text style={[styles.fastingDisabledText, { color: currentThemeColors.textSecondary }]}>Intermittent Fasting is disabled.</Text>
           <TouchableOpacity onPress={() => router.push('/settings')}>
-            <Text style={styles.enableLink}>Enable in Settings</Text>
+            <Text style={[styles.enableLink, { color: currentThemeColors.primary }]}>Enable in Settings</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {/* Heart Rate Metric Card */}
-      <View style={[styles.heartRateCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-        <Text style={styles.heartRateLabel}>HEART RATE</Text>
-        <Text style={styles.heartRateValue}>{heartRate} BPM</Text>
+      <View style={[styles.heartRateCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="heart" size={20} color={currentThemeColors.error} />
+          <Text style={[styles.heartRateLabel, { color: currentThemeColors.textSecondary, marginLeft: 8 }]}>HEART RATE</Text>
+        </View>
+        <Text style={[styles.heartRateValue, { color: currentThemeColors.text }]}>{heartRate} <Text style={{ fontSize: 16, fontWeight: 'normal' }}>BPM</Text></Text>
       </View>
 
       <CalendarHeatMap 
@@ -410,125 +412,80 @@ export default function DashboardScreen() {
         }}
       />
 
-      <Text style={[styles.title, { color: isDark ? '#fff' : '#333' }]}>Daily Breakdown</Text>
+      <Text style={[styles.title, { color: currentThemeColors.text, marginTop: layout.spacing.lg }]}>Daily Breakdown</Text>
       
       {/* Carb Tracker Card */}
-      <View style={[styles.carbCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-        <Text style={[styles.cardTitle, { color: '#007AFF' }]}>Net Carbs</Text>
+      <View style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+        <Text style={[styles.cardTitle, { color: currentThemeColors.info }]}>Net Carbs</Text>
         <View style={styles.progressHeader}>
-          <Text style={[styles.carbValue, { color: isDark ? '#fff' : '#000' }]}>{currentCarbs.toFixed(1)}g</Text>
-          <Text style={styles.carbLimit}>/ {goals.net_carbs}g limit</Text>
+          <Text style={[styles.carbValue, { color: currentThemeColors.text }]}>{currentCarbs.toFixed(1)}<Text style={{ fontSize: 18 }}>g</Text></Text>
+          <Text style={[styles.carbLimit, { color: currentThemeColors.textSecondary }]}>/ {goals.net_carbs}g limit</Text>
         </View>
-        <View style={[styles.progressBarBackground, { backgroundColor: isDark ? '#333' : '#eee' }]}>
-          <View style={[styles.progressBarFill, { width: `${carbProgress}%` }, currentCarbs > goals.net_carbs && { backgroundColor: '#FF3B30' }]} />
+        <View style={[styles.progressBarBackground, { backgroundColor: currentThemeColors.surface }]}>
+          <View style={[styles.progressBarFill, { width: `${carbProgress}%`, backgroundColor: currentCarbs > goals.net_carbs ? currentThemeColors.error : currentThemeColors.info }]} />
         </View>
       </View>
 
-      {/* Pie Chart Card */}
-      <View style={[styles.carbCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-        <Text style={[styles.cardTitle, { color: isDark ? '#fff' : '#333' }]}>Macro Split</Text>
-        <PieChart
-          data={chartData}
-          width={screenWidth - 88} // card margins
-          height={180}
-          chartConfig={{
-            color: (opacity = 1) => `rgba(${isDark ? '255, 255, 255' : '0, 0, 0'}, ${opacity})`,
-          }}
-          accessor={"population"}
-          backgroundColor={"transparent"}
-          paddingLeft={"0"}
-          center={[10, 0]}
-          absolute
-        />
+      {/* Pie Chart Card - Visual Polish */}
+      <View style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+        <Text style={[styles.cardTitle, { color: currentThemeColors.text }]}>Macro Split</Text>
+        <View style={{ alignItems: 'center' }}>
+          <PieChart
+            data={chartData}
+            width={screenWidth - 80}
+            height={200}
+            chartConfig={{
+              color: (opacity = 1) => currentThemeColors.text,
+            }}
+            accessor={"population"}
+            backgroundColor={"transparent"}
+            paddingLeft={"15"}
+            center={[10, 0]}
+            absolute
+          />
+        </View>
       </View>
 
       {/* Water Tracker Card */}
-      <View style={[styles.carbCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-        <Text style={[styles.cardTitle, { color: '#34C759' }]}>Water Intake</Text>
-        <View style={styles.progressHeader}>
-          <Text style={[styles.carbValue, { color: isDark ? '#fff' : '#000' }]}>{waterOz} oz</Text>
-          <Text style={styles.carbLimit}>/ {WATER_GOAL} oz goal</Text>
+      <View style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={[styles.cardTitle, { color: currentThemeColors.success, marginBottom: 0 }]}>Water Intake</Text>
+          <Ionicons name="water" size={24} color={currentThemeColors.success} />
         </View>
-        <View style={[styles.progressBarBackground, { backgroundColor: isDark ? '#333' : '#eee' }]}>
-          <View style={[styles.progressBarFill, { width: `${Math.min((waterOz / WATER_GOAL) * 100, 100)}%` }, { backgroundColor: '#34C759' }]} />
+        <View style={styles.progressHeader}>
+          <Text style={[styles.carbValue, { color: currentThemeColors.text }]}>{waterOz}<Text style={{ fontSize: 18 }}>oz</Text></Text>
+          <Text style={[styles.carbLimit, { color: currentThemeColors.textSecondary }]}>/ {WATER_GOAL} oz goal</Text>
+        </View>
+        <View style={[styles.progressBarBackground, { backgroundColor: currentThemeColors.surface }]}>
+          <View style={[styles.progressBarFill, { width: `${Math.min((waterOz / WATER_GOAL) * 100, 100)}%`, backgroundColor: currentThemeColors.success }]} />
         </View>
         <View style={styles.waterButtons}>
-          <TouchableOpacity style={[styles.waterBtn, { backgroundColor: isDark ? '#2C2C2E' : '#f0f0f0' }]} onPress={() => handleLogWater(8)}>
-            <Text style={[styles.waterBtnText, { color: isDark ? '#fff' : '#555' }]}>+ 8 oz</Text>
+          <TouchableOpacity style={[styles.waterBtn, { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.success }]} onPress={() => handleLogWater(8)}>
+            <Text style={[styles.waterBtnText, { color: currentThemeColors.success }]}>+ 8 oz</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.waterBtn, { backgroundColor: isDark ? '#2C2C2E' : '#f0f0f0' }]} onPress={() => handleLogWater(16)}>
-            <Text style={[styles.waterBtnText, { color: isDark ? '#fff' : '#555' }]}>+ 16.9 oz</Text>
+          <TouchableOpacity style={[styles.waterBtn, { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.success }]} onPress={() => handleLogWater(16)}>
+            <Text style={[styles.waterBtnText, { color: currentThemeColors.success }]}>+ 16 oz</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Other Metrics Grid */}
       <View style={styles.grid}>
-        <View style={[styles.metricCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-          <Text style={styles.metricLabel}>Net Calories</Text>
-          <Text style={[styles.metricValue, { color: isDark ? '#fff' : '#000' }]}>{Math.round(netCalories)}</Text>
-          <Text style={styles.metricGoal}>/ {goals.calories}</Text>
-          <View style={[styles.miniProgress, { backgroundColor: isDark ? '#333' : '#eee' }]}>
-            <View style={[styles.miniFill, { width: `${calProgress}%` }]} />
+        {[
+          { label: 'Calories', value: Math.round(netCalories), goal: goals.calories, color: currentThemeColors.primary, progress: calProgress },
+          { label: 'Protein', value: macros ? macros.protein.toFixed(0) : 0, goal: goals.protein, color: currentThemeColors.warning, progress: (macros?.protein / goals.protein) * 100 },
+          { label: 'Fat', value: macros ? macros.fat.toFixed(0) : 0, goal: goals.fat, color: currentThemeColors.error, progress: (macros?.fat / goals.fat) * 100 },
+        ].map((item, idx) => (
+          <View key={idx} style={[styles.metricCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
+            <Text style={[styles.metricLabel, { color: currentThemeColors.textSecondary }]}>{item.label.toUpperCase()}</Text>
+            <Text style={[styles.metricValue, { color: currentThemeColors.text }]}>{item.value}</Text>
+            <Text style={[styles.metricGoal, { color: currentThemeColors.textSecondary }]}>/ {item.goal}{item.label !== 'Calories' ? 'g' : ''}</Text>
+            <View style={[styles.miniProgress, { backgroundColor: currentThemeColors.surface }]}>
+              <View style={[styles.miniFill, { width: `${Math.min(item.progress, 100)}%`, backgroundColor: item.color }]} />
+            </View>
           </View>
-        </View>
-        
-        <View style={[styles.metricCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-          <Text style={styles.metricLabel}>Protein</Text>
-          <Text style={[styles.metricValue, { color: isDark ? '#fff' : '#000' }]}>{macros ? macros.protein.toFixed(1) : 0}</Text>
-          <Text style={styles.metricGoal}>/ {goals.protein}g</Text>
-          <View style={[styles.miniProgress, { backgroundColor: isDark ? '#333' : '#eee' }]}>
-            <View style={[styles.miniFill, { width: `${Math.min((macros?.protein / goals.protein) * 100, 100)}%`, backgroundColor: '#FF9500' }]} />
-          </View>
-        </View>
-        
-        <View style={[styles.metricCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-          <Text style={styles.metricLabel}>Fat</Text>
-          <Text style={[styles.metricValue, { color: isDark ? '#fff' : '#000' }]}>{macros ? macros.fat.toFixed(1) : 0}</Text>
-          <Text style={styles.metricGoal}>/ {goals.fat}g</Text>
-          <View style={[styles.miniProgress, { backgroundColor: isDark ? '#333' : '#eee' }]}>
-            <View style={[styles.miniFill, { width: `${Math.min((macros?.fat / goals.fat) * 100, 100)}%`, backgroundColor: '#FF3B30' }]} />
-          </View>
-        </View>
+        ))}
       </View>
-
-      <View style={{ height: 40 }} />
-
-      {/* Workout Detail Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-            <Text style={[styles.modalHeader, { color: isDark ? '#fff' : '#000' }]}>
-              {selectedDayContent?.date}
-            </Text>
-            
-            <ScrollView style={styles.modalScroll}>
-              {selectedDayContent?.workouts.map((workout, idx) => (
-                <View key={idx} style={styles.workoutRow}>
-                  <Text style={[styles.workoutName, { color: isDark ? '#fff' : '#000' }]}>
-                    {workout.exercise_name}
-                  </Text>
-                  <Text style={styles.workoutStats}>
-                    {workout.sets} Sets / {workout.reps} Reps / {workout.weight} lbs
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity 
-              style={styles.modalCloseBtn}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
@@ -536,69 +493,141 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingTop: 50,
   },
-  center: {
-    flex: 1,
+  sessionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  greetingText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  nameText: {
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  iconHeaderBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    color: '#333'
-  },
   tokenCard: {
-    backgroundColor: '#111', // Dark premium mode
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
     marginHorizontal: 20,
     marginBottom: 20,
-    shadowColor: '#FF2D55',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
+  },
+  tokenInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  tokenIconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tokenHeader: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FF2D55',
-    marginBottom: 10,
-    textTransform: 'uppercase',
-  },
-  tokenCount: {
-    fontSize: 36,
+    fontSize: 12,
     fontWeight: '900',
-    color: '#fff',
+    letterSpacing: 1.2,
+    marginBottom: 2,
   },
-  tokenLabel: {
-    fontSize: 16,
-    color: '#888',
-    marginLeft: 10,
-    fontWeight: '600'
+  tokenSubText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
-  carbCard: {
-    backgroundColor: '#fff',
+  tokenProgressBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  tokenProgressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  fastingCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+  },
+  fastingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  fastingStatus: {
+    fontSize: 14,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  fastingContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  timeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  timeValue: {
+    fontSize: 32,
+    fontWeight: '900',
+  },
+  heartRateCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
     borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  heartRateLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  heartRateValue: {
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  premiumCard: {
+    borderRadius: 24,
     padding: 24,
     marginHorizontal: 20,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '900',
+    marginHorizontal: 20,
+    marginBottom: 16,
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#555',
-    marginBottom: 10,
+    fontWeight: '800',
+    marginBottom: 12,
   },
   progressHeader: {
     flexDirection: 'row',
@@ -606,227 +635,96 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   carbValue: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#007AFF',
+    fontSize: 44,
+    fontWeight: '900',
+    letterSpacing: -1,
   },
   carbLimit: {
     fontSize: 16,
-    color: '#888',
+    fontWeight: '600',
     marginLeft: 8,
   },
   progressBarBackground: {
     height: 12,
-    backgroundColor: '#e0e0e0',
     borderRadius: 6,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#007AFF',
     borderRadius: 6,
+  },
+  waterButtons: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 12,
+  },
+  waterBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  waterBtnText: {
+    fontSize: 16,
+    fontWeight: '800',
   },
   grid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  waterButtons: {
-    flexDirection: 'row',
-    marginTop: 20,
-    justifyContent: 'space-between',
-  },
-  waterBtn: {
-    flex: 1,
-    backgroundColor: '#E5F1FF',
-    padding: 12,
-    borderRadius: 8,
-    marginHorizontal: 5,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  waterBtnText: {
-    color: '#007AFF',
-    fontWeight: 'bold',
+    gap: 10,
   },
   metricCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
     flex: 1,
-    marginHorizontal: 4,
+    borderRadius: 20,
+    padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
   },
   metricLabel: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 10,
+    fontWeight: '800',
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   metricValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 22,
+    fontWeight: '900',
   },
   metricGoal: {
     fontSize: 12,
-    color: '#888',
+    fontWeight: '600',
     marginTop: 2,
   },
   miniProgress: {
-    height: 4,
+    height: 6,
     width: '100%',
-    backgroundColor: '#eee',
-    borderRadius: 2,
-    marginTop: 10,
-    overflow: 'hidden'
+    borderRadius: 3,
+    marginTop: 12,
+    overflow: 'hidden',
   },
   miniFill: {
     height: '100%',
-    backgroundColor: '#007AFF',
-  },
-  burnedText: {
-    fontSize: 10,
-    color: '#FF2D55',
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  logoutButton: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    backgroundColor: 'rgba(255, 59, 48, 0.1)',
-    padding: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FF3B30',
-  },
-  logoutText: {
-    color: '#FF3B30',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  sessionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 10,
-    marginTop: 10,
-  },
-  iconHeaderBtn: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  headerBtn: {
-    marginLeft: 10,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  logoutHeaderText: {
-    color: '#666',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  resetHeaderText: {
-    color: '#FF3B30',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  fastingCard: {
-    backgroundColor: '#1C1C1E',
-    marginHorizontal: 20,
-    marginTop: 15,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-  },
-  feedingBorder: {
-    borderColor: 'rgba(52, 199, 89, 0.3)',
-  },
-  fastingBorder: {
-    borderColor: 'rgba(255, 149, 0, 0.3)',
-  },
-  fastingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  fastingStatus: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  fastingContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  timeLabel: {
-    color: '#8E8E93',
-    fontSize: 14,
-  },
-  timeValue: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '900',
   },
   fastingDisabledCard: {
-    backgroundColor: '#1C1C1E',
     marginHorizontal: 20,
-    marginTop: 15,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
+    marginBottom: 20,
+    padding: 24,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#333',
     borderStyle: 'dashed',
+    alignItems: 'center',
   },
   fastingDisabledText: {
-    color: '#8E8E93',
     fontSize: 14,
+    fontWeight: '600',
     marginBottom: 8,
   },
   enableLink: {
-    color: '#FF2D55',
-    fontSize: 14,
-  },
-  heartRateCard: {
-    backgroundColor: '#1C1C1E',
-    marginHorizontal: 20,
-    marginTop: 15,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  heartRateLabel: {
-    color: '#8E8E93',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  heartRateValue: {
-    color: '#FF2D55',
-    fontSize: 36,
-    fontWeight: '900',
+    fontSize: 16,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
   },
   calendarCard: {
     marginHorizontal: 20,

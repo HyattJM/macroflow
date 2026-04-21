@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Activi
 import { LineChart } from "react-native-chart-kit";
 import { Swipeable } from 'react-native-gesture-handler';
 import apiClient from '../../src/api/apiClient';
-import { useTheme } from '@react-navigation/native';
+import { useAppTheme } from '../../src/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 
 export const EXERCISE_DATABASE = [
   { category: 'Abs', color: '#5C6BC0', exercises: ['Ab-Wheel Rollout', 'Cable Crunch', 'Crunch', 'Crunch Machine', 'Decline Crunch', 'Dragon Flag', 'Hanging Knee Raise', 'Hanging Leg Raise', 'Plank', 'Side Plank'] },
@@ -18,7 +19,8 @@ export const EXERCISE_DATABASE = [
 ];
 
 export default function WorkoutScreen() {
-  const { colors, dark } = useTheme();
+  const { currentThemeColors, typography, layout } = useAppTheme();
+  const dark = true; 
   
   // Active Exercise State
   const [activeExercise, setActiveExercise] = useState('');
@@ -57,6 +59,10 @@ export default function WorkoutScreen() {
     const sub = DeviceEventEmitter.addListener('refreshWorkouts', fetchWorkouts);
     return () => sub.remove();
   }, []);
+
+  const toggleCat = (cat) => {
+    setExpandedCats(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
+  };
 
   useEffect(() => {
     let interval = null;
@@ -148,6 +154,8 @@ export default function WorkoutScreen() {
     };
     
     setCurrentSets([...currentSets, newSet]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
     // Instant update of historicalMax for subsequent sets in this session
     if (isPR) {
       setHistoricalMax({ weight: weightVal, reps: repsVal });
@@ -252,34 +260,35 @@ export default function WorkoutScreen() {
     const dateString = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     return (
-      <View key={item.id} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View key={item.id} style={[styles.card, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border }]}>
         <View style={styles.cardHeader}>
-          <View style={{flex: 1}}>
-             <Text style={[styles.exerciseNameText, { color: colors.text }]}>{item.exercise_name}</Text>
-             <Text style={[styles.dateText, { color: dark ? '#aaa' : '#888' }]}>{dateString}</Text>
+          <View style={{ flex: 1 }}>
+             <Text style={[styles.exerciseNameText, { color: currentThemeColors.text }]}>{item.exercise_name}</Text>
+             <Text style={styles.categoryText}>{item.category}</Text>
           </View>
-          <View style={styles.actionContainer}>
+          <Ionicons name="fitness-outline" size={24} color={currentThemeColors.primary} />
+        </View>
+        <View style={styles.cardBody}>
+          <View style={styles.macroStat}>
+            <Text style={styles.macroLabel}>MAX WEIGHT</Text>
+            <Text style={[styles.macroValue, { color: currentThemeColors.text }]}>{item.weight}</Text>
+          </View>
+          <View style={styles.macroStat}>
+            <Text style={styles.macroLabel}>SETS</Text>
+            <Text style={[styles.macroValue, { color: currentThemeColors.text }]}>{item.sets}</Text>
+          </View>
+          <View style={styles.macroStat}>
+            <Text style={styles.macroLabel}>REPS</Text>
+            <Text style={[styles.macroValue, { color: currentThemeColors.text }]}>{item.reps}</Text>
+          </View>
+        </View>
+        <View style={styles.actionContainer}>
             <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconButton}>
               <Text>✏️</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.iconButton}>
               <Text>🗑️</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-        <View style={[styles.macrosContainer, { backgroundColor: dark ? '#2C2C2E' : '#f9f9f9' }]}>
-          <View style={styles.macroBox}>
-            <Text style={[styles.macroValue, { color: colors.text }]}>{item.weight}</Text>
-            <Text style={[styles.macroLabel, { color: dark ? '#aaa' : '#666' }]}>lbs (max)</Text>
-          </View>
-          <View style={styles.macroBox}>
-            <Text style={[styles.macroValue, { color: colors.text }]}>{item.sets}</Text>
-            <Text style={[styles.macroLabel, { color: dark ? '#aaa' : '#666' }]}>Sets</Text>
-          </View>
-          <View style={styles.macroBox}>
-            <Text style={[styles.macroValue, { color: colors.text }]}>{item.reps}</Text>
-            <Text style={[styles.macroLabel, { color: dark ? '#aaa' : '#666' }]}>Avg Reps</Text>
-          </View>
         </View>
       </View>
     );
@@ -300,24 +309,29 @@ export default function WorkoutScreen() {
   }, [historyData]);
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.background }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: currentThemeColors.background }]} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+    >
       {/* Sticky Segmented Control */}
-      <View style={[styles.segmentedWrapper, { backgroundColor: colors.background }]}>
-        <View style={[styles.segmentedControl, { backgroundColor: dark ? '#1C1C1E' : '#E5E5EA' }]}>
+      <View style={[styles.segmentedWrapper, { backgroundColor: currentThemeColors.background }]}>
+        <View style={[styles.segmentedControl, { backgroundColor: currentThemeColors.surface }]}>
           {['track', 'history', 'graph'].map((tab) => (
             <TouchableOpacity
               key={tab}
               onPress={() => {
                 setActiveTab(tab);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               style={[
                 styles.segmentBtn,
-                activeTab === tab && { backgroundColor: colors.primary }
+                activeTab === tab && { backgroundColor: currentThemeColors.primary }
               ]}
             >
               <Text style={[
                 styles.segmentText,
-                { color: activeTab === tab ? '#fff' : (dark ? '#aaa' : '#666') }
+                { color: activeTab === tab ? '#fff' : currentThemeColors.textSecondary }
               ]}>
                 {tab.toUpperCase()}
               </Text>
@@ -328,22 +342,22 @@ export default function WorkoutScreen() {
 
       {activeTab === 'track' && (
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={[styles.title, { color: colors.text }]}>Active Exercise</Text>
+          <Text style={[styles.title, { color: currentThemeColors.text, paddingHorizontal: 20, marginTop: 20 }]}>Active Exercise</Text>
           
-          <View style={[styles.activeSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.activeSection, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
             <View style={styles.headerRow}>
               <TouchableOpacity 
-                style={[styles.exerciseSelectorTrigger, { backgroundColor: dark ? '#2C2C2E' : '#f0f0f0', borderColor: colors.border }]} 
+                style={[styles.exerciseSelectorTrigger, { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.border }]} 
                 onPress={() => setSelectorVisible(true)}
               >
-                <Text style={[styles.exerciseSelectorText, { color: activeExercise ? colors.text : (dark ? '#666' : '#999') }]}>
+                <Text style={[styles.exerciseSelectorText, { color: activeExercise ? currentThemeColors.text : currentThemeColors.textSecondary }]}>
                   {activeExercise || 'Select Exercise'}
                 </Text>
-                <Ionicons name="chevron-down" size={20} color={colors.primary} />
+                <Ionicons name="chevron-down" size={20} color={currentThemeColors.primary} />
               </TouchableOpacity>
-              <View style={styles.volumeBadge}>
-                <Text style={styles.volumeLabel}>VOLUME</Text>
-                <Text style={styles.volumeValue}>{totalVolume.toLocaleString()} lbs</Text>
+              <View style={[styles.volumeBadge, { backgroundColor: currentThemeColors.primary + '15' }]}>
+                <Text style={[styles.volumeLabel, { color: currentThemeColors.primary }]}>VOLUME</Text>
+                <Text style={[styles.volumeValue, { color: currentThemeColors.text }]}>{totalVolume.toLocaleString()} <Text style={{ fontSize: 10 }}>LBS</Text></Text>
               </View>
             </View>
 
@@ -363,68 +377,69 @@ export default function WorkoutScreen() {
                 <View style={styles.setRow}>
                   <Text style={[styles.setText, { flex: 0.5, textAlign: 'center', color: dark ? '#aaa' : '#666' }]}>{index + 1}</Text>
                   <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.setText, { color: colors.text, fontWeight: 'bold' }]}>{s.weight}</Text>
-                    {s.is_pr && <Ionicons name="trophy" size={16} color="#FFD700" style={{ marginLeft: 6 }} />}
+                    <Text style={[styles.setText, { color: currentThemeColors.text, fontWeight: 'bold' }]}>{s.weight}</Text>
+                    <Text style={styles.setSubText}>lbs</Text>
                   </View>
-                  <Text style={[styles.setText, { flex: 1, color: colors.text, fontWeight: 'bold' }]}>{s.reps}</Text>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={[styles.setText, { flex: 1, color: currentThemeColors.text, fontWeight: 'bold' }]}>{s.reps}</Text>
                   <View style={{ width: 40 }} />
                 </View>
-              </Swipeable>
+              </View>
+            </Swipeable>
             ))}
 
-            <View style={[styles.inputRow, { borderTopWidth: 1, borderTopColor: colors.border }]}>
+            <View style={[styles.inputRow, { borderTopWidth: 1, borderTopColor: currentThemeColors.border, paddingTop: 15 }]}>
                <View style={{ flex: 0.5, alignItems: 'center' }}>
-                  <Text style={{ color: colors.primary, fontWeight: 'bold' }}>{currentSets.length + 1}</Text>
+                  <Text style={{ color: currentThemeColors.primary, fontWeight: '900', fontSize: 18 }}>{currentSets.length + 1}</Text>
                </View>
                <TextInput
-                 style={[styles.gridInput, { flex: 1, color: colors.text, backgroundColor: dark ? '#2C2C2E' : '#f0f0f0' }]}
-                 placeholder="0"
-                 placeholderTextColor={dark ? '#666' : '#999'}
+                 style={[styles.gridInput, { flex: 1, color: currentThemeColors.text, backgroundColor: currentThemeColors.surface }]}
+                 placeholder="LBS"
+                 placeholderTextColor={currentThemeColors.textSecondary}
                  keyboardType="numeric"
                  value={weight}
                  onChangeText={setWeight}
-                 keyboardAppearance={dark ? 'dark' : 'light'}
+                 keyboardAppearance='dark'
                />
                <TextInput
-                 style={[styles.gridInput, { flex: 1, color: colors.text, backgroundColor: dark ? '#2C2C2E' : '#f0f0f0' }]}
-                 placeholder="0"
-                 placeholderTextColor={dark ? '#666' : '#999'}
+                 style={[styles.gridInput, { flex: 1, color: currentThemeColors.text, backgroundColor: currentThemeColors.surface }]}
+                 placeholder="REPS"
+                 placeholderTextColor={currentThemeColors.textSecondary}
                  keyboardType="numeric"
                  value={reps}
                  onChangeText={setReps}
-                 keyboardAppearance={dark ? 'dark' : 'light'}
+                 keyboardAppearance='dark'
                />
-               <TouchableOpacity style={styles.addSetBtn} onPress={handleLogSet}>
+               <TouchableOpacity style={[styles.addSetBtn, { backgroundColor: currentThemeColors.primary }]} onPress={handleLogSet}>
                  <Text style={styles.addSetBtnText}>LOG</Text>
                </TouchableOpacity>
             </View>
           </View>
-
-          {/* Auto-Rest Timer */}
+                    {/* Auto-Rest Timer */}
           {restTimeLeft > 0 && (
-            <View style={[styles.timerCard, { backgroundColor: colors.card, borderColor: colors.primary }]}>
+            <View style={[styles.timerCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.primary, ...layout.shadows.md }]}>
               <View style={styles.timerHeader}>
-                <Ionicons name="hourglass-outline" size={20} color={colors.primary} />
-                <Text style={[styles.timerLabel, { color: colors.primary }]}>RESTING</Text>
+                <Ionicons name="hourglass-outline" size={20} color={currentThemeColors.primary} />
+                <Text style={[styles.timerLabel, { color: currentThemeColors.primary }]}>RESTING</Text>
               </View>
-              <Text style={[styles.timerValue, { color: colors.text }]}>{formatTime(restTimeLeft)}</Text>
+              <Text style={[styles.timerValue, { color: currentThemeColors.text }]}>{formatTime(restTimeLeft)}</Text>
               <View style={styles.timerActions}>
-                <TouchableOpacity onPress={() => setRestTimeLeft(prev => prev + 30)} style={[styles.timerBtn, { backgroundColor: dark ? '#2C2C2E' : '#f0f0f0' }]}>
-                  <Text style={[styles.timerBtnText, { color: colors.text }]}>+30s</Text>
+                <TouchableOpacity onPress={() => setRestTimeLeft(prev => prev + 30)} style={[styles.timerBtn, { backgroundColor: currentThemeColors.surface }]}>
+                  <Text style={[styles.timerBtnText, { color: currentThemeColors.text }]}>+30s</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setRestTimeLeft(prev => Math.max(0, prev - 30))} style={[styles.timerBtn, { backgroundColor: dark ? '#2C2C2E' : '#f0f0f0' }]}>
-                  <Text style={[styles.timerBtnText, { color: colors.text }]}>-30s</Text>
+                <TouchableOpacity onPress={() => setRestTimeLeft(prev => Math.max(0, prev - 30))} style={[styles.timerBtn, { backgroundColor: currentThemeColors.surface }]}>
+                  <Text style={[styles.timerBtnText, { color: currentThemeColors.text }]}>-30s</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setRestTimeLeft(0)} style={[styles.timerBtn, { backgroundColor: '#FF3B30' }]}>
+                <TouchableOpacity onPress={() => setRestTimeLeft(0)} style={[styles.timerBtn, { backgroundColor: currentThemeColors.error }]}>
                   <Text style={[styles.timerBtnText, { color: '#fff' }]}>Skip</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.timerToggleRow}>
-                <Text style={{ color: dark ? '#aaa' : '#666', fontSize: 12 }}>Auto-Rest Timer</Text>
+                <Text style={{ color: currentThemeColors.textSecondary, fontSize: 12, fontWeight: '600' }}>Auto-Rest Timer</Text>
                 <Switch 
                   value={isTimerEnabled} 
                   onValueChange={setIsTimerEnabled}
-                  trackColor={{ false: '#767577', true: colors.primary }}
+                  trackColor={{ false: currentThemeColors.surface, true: currentThemeColors.primary }}
                   thumbColor="#f4f3f4"
                 />
               </View>
@@ -432,34 +447,28 @@ export default function WorkoutScreen() {
           )}
 
           {currentSets.length > 0 && (
-            <View style={[styles.finishSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.finishSection, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
               <View style={styles.durationRow}>
-                <Text style={{ color: dark ? '#aaa' : '#666', fontSize: 14 }}>Duration (min)</Text>
+                <Text style={{ color: currentThemeColors.textSecondary, fontSize: 14, fontWeight: '600' }}>Session Duration (min)</Text>
                 <TextInput
-                  style={[styles.durationInput, { color: colors.text, backgroundColor: dark ? '#2C2C2E' : '#f0f0f0' }]}
+                  style={[styles.durationInput, { color: currentThemeColors.text, backgroundColor: currentThemeColors.surface }]}
                   keyboardType="numeric"
                   value={duration}
                   onChangeText={setDuration}
-                  keyboardAppearance={dark ? 'dark' : 'light'}
+                  keyboardAppearance='dark'
                 />
               </View>
-              <TouchableOpacity style={styles.finishBtn} onPress={handleFinishExercise} disabled={submitting}>
-                <Text style={styles.finishBtnText}>{submitting ? 'Logging...' : 'Finish Exercise'}</Text>
+              <TouchableOpacity style={[styles.finishBtn, { backgroundColor: currentThemeColors.success }]} onPress={handleFinishExercise} disabled={submitting}>
+                <Text style={styles.finishBtnText}>{submitting ? 'LOGGING...' : 'FINISH EXERCISE'}</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          <Text style={[styles.subtitle, { color: colors.text }]}>Recent Sessions</Text>
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            workouts.slice(0, 5).map(item => renderHistoryItem(item))
-          )}
         </ScrollView>
       )}
 
       {activeTab === 'history' && (() => {
-        if (!activeExercise) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}><Text style={{ color: colors.text, fontSize: 16 }}>So much empty... Select an exercise above!</Text></View>;
+        if (!activeExercise) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}><Text style={{ color: currentThemeColors.text, fontSize: 16 }}>So much empty... Select an exercise above!</Text></View>;
         return (
           <SectionList
             sections={historyData}
@@ -468,16 +477,16 @@ export default function WorkoutScreen() {
             onRefresh={fetchHistory}
             refreshing={loading}
             renderSectionHeader={({ section: { title } }) => (
-              <View style={[styles.historyHeader, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-                <Text style={[styles.historyHeaderText, { color: colors.primary }]}>{title}</Text>
+              <View style={[styles.historyHeader, { backgroundColor: currentThemeColors.background, borderBottomColor: currentThemeColors.border }]}>
+                <Text style={[styles.historyHeaderText, { color: currentThemeColors.primary }]}>{title}</Text>
               </View>
             )}
             renderItem={({ item }) => (
-              <View style={[styles.historyItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.historyItem, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
                 <View style={styles.historyTopRow}>
-                  <Text style={[styles.historyName, { color: colors.text }]}>{item.exercise_name}</Text>
+                  <Text style={[styles.historyName, { color: currentThemeColors.text }]}>{item.exercise_name}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.historyStats, { color: colors.primary }]}>{item.sets} Sets / {item.reps} Reps / {item.weight} lbs</Text>
+                    <Text style={[styles.historyStats, { color: currentThemeColors.primary }]}>{item.sets} Sets / {item.reps} Reps / {item.weight} lbs</Text>
                     {allTimePR?.id === item.id && <Ionicons name="trophy" size={16} color="#FFD700" style={{ marginLeft: 6 }} />}
                   </View>
                 </View>
@@ -489,14 +498,14 @@ export default function WorkoutScreen() {
       })()}
 
       {activeTab === 'graph' && (() => {
-        if (!activeExercise) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}><Text style={{ color: colors.text, fontSize: 16 }}>So much empty... Select an exercise above!</Text></View>;
+        if (!activeExercise) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}><Text style={{ color: currentThemeColors.text, fontSize: 16 }}>So much empty... Select an exercise above!</Text></View>;
         return (
           <ScrollView contentContainerStyle={{ padding: 15 }}>
-            <Text style={[styles.title, { color: colors.text }]}>Progress Analysis</Text>
-            <View style={[styles.activeGraphHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
-               <Text style={[styles.activeGraphExName, { color: colors.primary }]}>{activeExercise}</Text>
-               <Text style={{ color: dark ? '#aaa' : '#666', fontSize: 12 }}>All-Time PR: {historicalMax.weight} lbs x {historicalMax.reps}</Text>
-               {graphLoading && <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 10 }} />}
+            <Text style={[styles.title, { color: currentThemeColors.text }]}>Progress Analysis</Text>
+            <View style={[styles.activeGraphHeader, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
+               <Text style={[styles.activeGraphExName, { color: currentThemeColors.primary }]}>{activeExercise}</Text>
+               <Text style={{ color: currentThemeColors.textSecondary, fontSize: 12 }}>All-Time PR: {historicalMax.weight} lbs x {historicalMax.reps}</Text>
+               {graphLoading && <ActivityIndicator size="small" color={currentThemeColors.primary} style={{ marginTop: 10 }} />}
             </View>
 
             {graphData.length > 1 ? (
@@ -509,30 +518,30 @@ export default function WorkoutScreen() {
                    width={Dimensions.get("window").width - 30}
                    height={220}
                    chartConfig={{
-                     backgroundColor: colors.card,
-                     backgroundGradientFrom: colors.card,
-                     backgroundGradientTo: colors.card,
+                     backgroundColor: currentThemeColors.card,
+                     backgroundGradientFrom: currentThemeColors.card,
+                     backgroundGradientTo: currentThemeColors.card,
                      decimalPlaces: 0,
-                     color: (opacity = 1) => colors.primary,
-                     labelColor: (opacity = 1) => dark ? '#aaa' : '#666',
+                     color: (opacity = 1) => currentThemeColors.primary,
+                     labelColor: (opacity = 1) => currentThemeColors.textSecondary,
                      propsForDots: {
                        r: "6",
                        strokeWidth: "2",
-                       stroke: colors.primary
+                       stroke: currentThemeColors.primary
                      }
                    }}
                    bezier
                    style={{
                      marginVertical: 8,
                      borderRadius: 16
-                  }}
+                   }}
                  />
-                 <Text style={[styles.chartStatus, { color: dark ? '#aaa' : '#666' }]}>Progression of Max Weight (lbs)</Text>
+                 <Text style={[styles.chartStatus, { color: currentThemeColors.textSecondary }]}>Progression of Max Weight (lbs)</Text>
                </View>
             ) : (
-              <View style={[styles.emptyChart, { backgroundColor: colors.card }]}>
-                <Ionicons name="analytics-outline" size={48} color={dark ? '#333' : '#ccc'} />
-                <Text style={{ color: dark ? '#aaa' : '#666', marginTop: 10, textAlign: 'center' }}>
+              <View style={[styles.emptyChart, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
+                <Ionicons name="analytics-outline" size={48} color={currentThemeColors.surface} />
+                <Text style={{ color: currentThemeColors.textSecondary, marginTop: 10, textAlign: 'center' }}>
                   {graphData.length === 1 
                     ? 'Need at least 2 sessions to graph progress' 
                     : (activeExercise ? `No history for ${activeExercise} yet. Log more sessions!` : 'Select an exercise to see your progress')}
@@ -546,46 +555,45 @@ export default function WorkoutScreen() {
       <Modal visible={isEditModalVisible} animationType="slide" transparent={true} onRequestClose={() => setEditModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: dark ? '#1C1C1E' : '#fff' }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Lift</Text>
-            
-            <TextInput 
-              style={[styles.inputFullModal, { backgroundColor: dark ? '#2C2C2E' : '#f9f9f9', color: colors.text, borderColor: colors.border }]} 
+            <Text style={[styles.modalTitle, { color: currentThemeColors.text }]}>Edit Lift</Text>
+            <View style={styles.modalInputSection}>
+              <Text style={{ color: currentThemeColors.textSecondary, marginBottom: 5 }}>Exercise Name</Text>
+              <TextInput 
+              style={[styles.inputFullModal, { backgroundColor: dark ? '#2C2C2E' : '#f9f9f9', color: currentThemeColors.text, borderColor: currentThemeColors.border }]} 
               value={editExerciseName} 
               onChangeText={setEditExerciseName} 
-              placeholder="Exercise Name" 
-              placeholderTextColor={dark ? '#666' : '#999'}
-              keyboardAppearance={dark ? 'dark' : 'light'}
-            />
-            <View style={styles.row}>
-               <TextInput 
-                 style={[styles.inputModal, {flex: 1, marginRight: 5, backgroundColor: dark ? '#2C2C2E' : '#f9f9f9', color: colors.text, borderColor: colors.border }]} 
+              />
+
+              <View style={{flexDirection: 'row', marginTop: 15}}>
+                 <View style={{flex: 1, marginRight: 5}}>
+                 <Text style={{ color: currentThemeColors.textSecondary, marginBottom: 5 }}>Weight</Text>
+                 <TextInput 
+                 style={[styles.inputModal, {flex: 1, marginRight: 5, backgroundColor: dark ? '#2C2C2E' : '#f9f9f9', color: currentThemeColors.text, borderColor: currentThemeColors.border }]} 
                  value={editWeight} 
                  onChangeText={setEditWeight} 
-                 placeholder="Weight" 
-                 keyboardType="numeric" 
-                 placeholderTextColor={dark ? '#666' : '#999'}
-                 keyboardAppearance={dark ? 'dark' : 'light'}
-               />
-               <TextInput 
-                 style={[styles.inputModal, {flex: 1, marginHorizontal: 5, backgroundColor: dark ? '#2C2C2E' : '#f9f9f9', color: colors.text, borderColor: colors.border }]} 
+                 keyboardType="numeric"
+                 />
+                 </View>
+                 <View style={{flex: 1, marginHorizontal: 5}}>
+                 <Text style={{ color: currentThemeColors.textSecondary, marginBottom: 5 }}>Sets</Text>
+                 <TextInput 
+                 style={[styles.inputModal, {flex: 1, marginHorizontal: 5, backgroundColor: dark ? '#2C2C2E' : '#f9f9f9', color: currentThemeColors.text, borderColor: currentThemeColors.border }]} 
                  value={editSets} 
                  onChangeText={setEditSets} 
-                 placeholder="Sets" 
-                 keyboardType="numeric" 
-                 placeholderTextColor={dark ? '#666' : '#999'}
-                 keyboardAppearance={dark ? 'dark' : 'light'}
-               />
-               <TextInput 
-                 style={[styles.inputModal, {flex: 1, marginLeft: 5, backgroundColor: dark ? '#2C2C2E' : '#f9f9f9', color: colors.text, borderColor: colors.border }]} 
+                 keyboardType="numeric"
+                 />
+                 </View>
+                 <View style={{flex: 1, marginLeft: 5}}>
+                 <Text style={{ color: currentThemeColors.textSecondary, marginBottom: 5 }}>Reps</Text>
+                 <TextInput 
+                 style={[styles.inputModal, {flex: 1, marginLeft: 5, backgroundColor: dark ? '#2C2C2E' : '#f9f9f9', color: currentThemeColors.text, borderColor: currentThemeColors.border }]} 
                  value={editReps} 
                  onChangeText={setEditReps} 
-                 placeholder="Reps" 
-                 keyboardType="numeric" 
-                 placeholderTextColor={dark ? '#666' : '#999'}
-                 keyboardAppearance={dark ? 'dark' : 'light'}
-               />
+                 keyboardType="numeric"
+                 />
+                 </View>
+              </View>
             </View>
-
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: dark ? '#2C2C2E' : '#eee' }]} onPress={() => setEditModalVisible(false)}>
                 <Text style={[styles.cancelTxt, { color: dark ? '#aaa' : '#555' }]}>Cancel</Text>
@@ -603,44 +611,45 @@ export default function WorkoutScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: dark ? '#1C1C1E' : '#fff', height: '80%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Choose Exercise</Text>
+              <Text style={[styles.modalTitle, { color: currentThemeColors.text }]}>Choose Exercise</Text>
               <TouchableOpacity onPress={() => setSelectorVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color={currentThemeColors.text} />
               </TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {EXERCISE_DATABASE.map(item => {
-                const isExpanded = expandedCats.includes(item.category);
+            <SectionList
+              sections={EXERCISE_DATABASE.map(cat => ({ title: cat.category, color: cat.color, data: cat.exercises }))}
+              keyExtractor={(item) => item}
+              renderSectionHeader={({ section }) => {
+                const isExpanded = expandedCats.includes(section.title);
                 return (
-                  <View key={item.category} style={styles.catWrapper}>
-                    <TouchableOpacity 
-                      style={[styles.catHeader, { borderBottomColor: colors.border }]} 
-                      onPress={() => setExpandedCats(prev => isExpanded ? prev.filter(c => c !== item.category) : [...prev, item.category])}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: item.color, marginRight: 10 }} />
-                        <Text style={[styles.catHeaderText, { color: colors.text }]}>{item.category}</Text>
-                      </View>
-                      <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={colors.primary} />
-                    </TouchableOpacity>
-                    {isExpanded && item.exercises.map(ex => (
-                      <TouchableOpacity 
-                        key={ex} 
-                        style={[styles.exItem, { borderBottomColor: colors.border }]} 
-                        onPress={() => {
-                          setActiveExercise(ex);
-                          fetchHistoricalMax(ex);
-                          setSelectorVisible(false);
-                        }}
-                      >
-                        <Text style={[styles.exItemText, { color: colors.text }]}>{ex}</Text>
-                        <Ionicons name="add-circle-outline" size={20} color={item.color} />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <TouchableOpacity 
+                      onPress={() => toggleCat(section.title)}
+                      style={[styles.catHeader, { borderBottomColor: currentThemeColors.border }]} 
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={[styles.catIndicator, { backgroundColor: section.color }]} />
+                        <Text style={[styles.catHeaderText, { color: currentThemeColors.text }]}>{section.title}</Text>
+                    </View>
+                      <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={currentThemeColors.primary} />
+                  </TouchableOpacity>
                 );
-              })}
-            </ScrollView>
+              }}
+              renderItem={({ item, section }) => {
+                if (!expandedCats.includes(section.title)) return null;
+                return (
+                  <TouchableOpacity 
+                        onPress={() => { setActiveExercise(item); setSelectorVisible(false); }}
+                        style={[styles.exItem, { borderBottomColor: currentThemeColors.border }]} 
+                  >
+                    <View style={styles.exItemInner}>
+                        <View style={[styles.catDot, { backgroundColor: section.color }]} />
+                        <Text style={[styles.exItemText, { color: currentThemeColors.text }]}>{item}</Text>
+                    </View>
+                    <Ionicons name="add-circle-outline" size={20} color={currentThemeColors.primary} />
+                  </TouchableOpacity>
+                );
+              }}
+            />
           </View>
         </View>
       </Modal>

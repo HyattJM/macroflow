@@ -3,10 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import apiClient from '../../src/api/apiClient';
-import { useTheme } from '@react-navigation/native';
+import { useAppTheme } from '../../src/context/ThemeContext';
 
 export default function CookbookScreen() {
-  const { colors, dark } = useTheme();
+  const { currentThemeColors, typography, layout } = useAppTheme();
   const [savedRecipes, setSavedRecipes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedRecipeIds, setSelectedRecipeIds] = useState([]);
@@ -20,8 +20,6 @@ export default function CookbookScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchRecipes();
-      // Optionally reset selections when revisiting the tab
-      // setSelectedRecipeIds([]); 
     }, [])
   );
 
@@ -70,23 +68,23 @@ export default function CookbookScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.headerContainer, { backgroundColor: dark ? '#000' : colors.card, borderBottomColor: colors.border }]}>
-        <Text style={[styles.header, { color: colors.text }]}>Cookbook</Text>
-        <Text style={[styles.subtitle, { color: dark ? '#aaa' : '#666' }]}>Your saved repertoire of Keto recipes.</Text>
+    <View style={[styles.container, { backgroundColor: currentThemeColors.background }]}>
+      <View style={[styles.headerContainer, { backgroundColor: currentThemeColors.surface, borderBottomColor: currentThemeColors.border || currentThemeColors.surface }]}>
+        <Text style={[styles.header, { color: currentThemeColors.text }]}>Cookbook</Text>
+        <Text style={[styles.subtitle, { color: currentThemeColors.textSecondary }]}>Your saved repertoire of Keto recipes.</Text>
       </View>
 
       {loading && savedRecipes.length === 0 ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#FF2D55" />
+          <ActivityIndicator size="large" color={currentThemeColors.primary} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {savedRecipes.length === 0 ? (
             <View style={styles.centered}>
-              <Ionicons name="book-outline" size={60} color={dark ? '#333' : '#ccc'} style={{marginBottom: 20}} />
-              <Text style={[styles.emptyText, { color: colors.text }]}>No recipes saved yet.</Text>
-              <Text style={[styles.emptySubText, { color: dark ? '#aaa' : '#666' }]}>Visit the AI Chef to stock your cookbook!</Text>
+              <Ionicons name="book-outline" size={60} color={currentThemeColors.textSecondary} style={{marginBottom: 20}} />
+              <Text style={[styles.emptyText, { color: currentThemeColors.text }]}>No recipes saved yet.</Text>
+              <Text style={[styles.emptySubText, { color: currentThemeColors.textSecondary }]}>Visit the AI Chef to stock your cookbook!</Text>
             </View>
           ) : (
             <View style={styles.grid}>
@@ -97,8 +95,11 @@ export default function CookbookScreen() {
                     key={recipe.id}
                     style={[
                       styles.recipeCard, 
-                      { backgroundColor: colors.card, borderColor: isSelected ? '#FF2D55' : 'transparent' },
-                      isSelected && styles.recipeCardSelected
+                      { 
+                        backgroundColor: currentThemeColors.card, 
+                        borderColor: isSelected ? currentThemeColors.primary : currentThemeColors.border,
+                        ...layout.shadows.md 
+                      }
                     ]}
                     onPress={() => {
                       setSelectedRecipe(recipe);
@@ -108,23 +109,29 @@ export default function CookbookScreen() {
                     activeOpacity={0.9}
                   >
                     <TouchableOpacity 
-                      style={[styles.checkBadgeToggle, { backgroundColor: isSelected ? '#FF2D55' : 'rgba(255,255,255,0.1)' }]}
+                      style={[
+                        styles.checkBadgeToggle, 
+                        { 
+                          backgroundColor: isSelected ? currentThemeColors.primary : currentThemeColors.surface,
+                          borderColor: isSelected ? currentThemeColors.primary : currentThemeColors.border
+                        }
+                      ]}
                       onPress={() => toggleRecipeSelection(recipe.id)}
                     >
                       <Ionicons 
-                        name={isSelected ? "checkmark" : "add"} 
-                        size={20} 
-                        color="#fff" 
-                      />
+                         name={isSelected ? "checkmark" : "add"} 
+                         size={20} 
+                         color={isSelected ? '#fff' : currentThemeColors.primary} 
+                       />
                     </TouchableOpacity>
 
-                    <Text style={[styles.recipeTitle, { color: colors.text }]}>{recipe.title}</Text>
+                    <Text style={[styles.recipeTitle, { color: currentThemeColors.text }]}>{recipe.title}</Text>
                     <View style={styles.macroRow}>
-                      <View style={[styles.macroPill, { backgroundColor: dark ? '#000' : '#f0f0f0', borderColor: colors.border }]}>
-                        <Text style={[styles.macroText, { color: dark ? '#ddd' : '#444' }]}>🔥 {recipe.calories} kcal</Text>
+                      <View style={[styles.macroPill, { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.border }]}>
+                        <Text style={[styles.macroText, { color: currentThemeColors.textSecondary }]}>🔥 {recipe.calories} kcal</Text>
                       </View>
-                      <View style={[styles.macroPill, { backgroundColor: dark ? '#000' : '#f0f0f0', borderColor: colors.border }]}>
-                        <Text style={[styles.macroText, { color: dark ? '#ddd' : '#444' }]}>🥑 {recipe.net_carbs}g Net Carbs</Text>
+                      <View style={[styles.macroPill, { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.border }]}>
+                        <Text style={[styles.macroText, { color: currentThemeColors.textSecondary }]}>🥑 {recipe.net_carbs}g Net Carbs</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -137,7 +144,7 @@ export default function CookbookScreen() {
 
       {selectedRecipeIds.length > 0 && (
         <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.fab} onPress={handleGenerateList} disabled={isGenerating}>
+          <TouchableOpacity style={[styles.fab, { backgroundColor: currentThemeColors.primary, shadowColor: currentThemeColors.primary, ...layout.shadows.lg }]} onPress={handleGenerateList} disabled={isGenerating}>
             {isGenerating ? (
               <ActivityIndicator color="#fff" />
             ) : (
@@ -150,28 +157,27 @@ export default function CookbookScreen() {
         </View>
       )}
 
-      {/* Grocery List Modal */}
       <Modal 
         visible={showGroceryModal} 
         animationType="slide" 
         presentationStyle="pageSheet" 
         onRequestClose={() => setShowGroceryModal(false)}
       >
-        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Grocery List</Text>
+        <View style={[styles.modalContainer, { backgroundColor: currentThemeColors.background }]}>
+          <View style={[styles.modalHeader, { backgroundColor: currentThemeColors.surface, borderBottomColor: currentThemeColors.border || currentThemeColors.surface }]}>
+            <Text style={[styles.modalTitle, { color: currentThemeColors.text }]}>Grocery List</Text>
             <TouchableOpacity onPress={() => setShowGroceryModal(false)} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color={colors.text} />
+              <Ionicons name="close" size={28} color={currentThemeColors.text} />
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={styles.modalScroll}>
             {groceryData?.map((category, index) => (
-              <View key={index} style={[styles.categoryContainer, { backgroundColor: colors.card }]}>
-                <Text style={styles.categoryTitle}>{category.name}</Text>
+              <View key={index} style={[styles.categoryContainer, { backgroundColor: currentThemeColors.surface }]}>
+                <Text style={[styles.categoryTitle, { color: currentThemeColors.primary }]}>{category.name}</Text>
                 {category.items.map((item, iIndex) => (
                   <View key={iIndex} style={styles.itemRow}>
-                    <Ionicons name="ellipse" size={8} color="#FF2D55" style={{marginTop: 6}} />
-                    <Text style={[styles.itemText, { color: dark ? '#ddd' : '#444' }]}>{item}</Text>
+                    <Ionicons name="ellipse" size={8} color={currentThemeColors.primary} style={{marginTop: 6}} />
+                    <Text style={[styles.itemText, { color: currentThemeColors.textSecondary }]}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -180,7 +186,6 @@ export default function CookbookScreen() {
         </View>
       </Modal>
 
-      {/* Recipe Detail Modal */}
       <Modal 
         visible={modalVisible} 
         animationType="slide" 
@@ -188,53 +193,53 @@ export default function CookbookScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.detailModalContent, { backgroundColor: dark ? '#1C1C1E' : '#fff' }]}>
-            <View style={styles.modalIndicator} />
+          <View style={[styles.detailModalContent, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, borderWidth: 1 }]}>
+            <View style={[styles.modalIndicator, { backgroundColor: currentThemeColors.border }]} />
             
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailScrollContent}>
-              <Text style={[styles.detailTitle, { color: colors.text }]}>{selectedRecipe?.title}</Text>
+              <Text style={[styles.detailTitle, { color: currentThemeColors.text }]}>{selectedRecipe?.title}</Text>
               
               <View style={styles.detailMacroRow}>
                 <View style={styles.detailMacroBox}>
-                  <Text style={styles.detailMacroLabel}>Calories</Text>
-                  <Text style={[styles.detailMacroValue, { color: colors.text }]}>{selectedRecipe?.calories}</Text>
+                  <Text style={[styles.detailMacroLabel, { color: currentThemeColors.textSecondary }]}>Calories</Text>
+                  <Text style={[styles.detailMacroValue, { color: currentThemeColors.text }]}>{selectedRecipe?.calories}</Text>
                 </View>
                 <View style={styles.detailMacroBox}>
-                  <Text style={styles.detailMacroLabel}>Protein</Text>
-                  <Text style={[styles.detailMacroValue, { color: colors.text }]}>{selectedRecipe?.protein}g</Text>
+                  <Text style={[styles.detailMacroLabel, { color: currentThemeColors.textSecondary }]}>Protein</Text>
+                  <Text style={[styles.detailMacroValue, { color: currentThemeColors.warning }]}>{selectedRecipe?.protein}g</Text>
                 </View>
                 <View style={styles.detailMacroBox}>
-                  <Text style={styles.detailMacroLabel}>Fat</Text>
-                  <Text style={[styles.detailMacroValue, { color: colors.text }]}>{selectedRecipe?.fat}g</Text>
+                  <Text style={[styles.detailMacroLabel, { color: currentThemeColors.textSecondary }]}>Fat</Text>
+                  <Text style={[styles.detailMacroValue, { color: currentThemeColors.error }]}>{selectedRecipe?.fat}g</Text>
                 </View>
                 <View style={styles.detailMacroBox}>
-                  <Text style={styles.detailMacroLabel}>Net Carbs</Text>
-                  <Text style={[styles.detailMacroValue, { color: colors.text }]}>{selectedRecipe?.net_carbs}g</Text>
+                  <Text style={[styles.detailMacroLabel, { color: currentThemeColors.textSecondary }]}>Net Carbs</Text>
+                  <Text style={[styles.detailMacroValue, { color: currentThemeColors.info }]}>{selectedRecipe?.net_carbs}g</Text>
                 </View>
               </View>
 
-              <View style={[styles.detailDivider, { backgroundColor: colors.border }]} />
+              <View style={[styles.detailDivider, { backgroundColor: currentThemeColors.border }]} />
 
-              <Text style={styles.detailSectionTitle}>Ingredients</Text>
+              <Text style={[styles.detailSectionTitle, { color: currentThemeColors.primary }]}>Ingredients</Text>
               {selectedRecipe?.ingredients?.map((item, index) => (
-                <Text key={index} style={[styles.detailListItem, { color: dark ? '#ddd' : '#444' }]}>• {item}</Text>
+                <Text key={index} style={[styles.detailListItem, { color: currentThemeColors.textSecondary }]}>• {item}</Text>
               ))}
 
-              <View style={[styles.detailDivider, { backgroundColor: colors.border }]} />
+              <View style={[styles.detailDivider, { backgroundColor: currentThemeColors.border }]} />
 
-              <Text style={styles.detailSectionTitle}>Instructions</Text>
+              <Text style={[styles.detailSectionTitle, { color: currentThemeColors.primary }]}>Instructions</Text>
               {selectedRecipe?.instructions?.map((step, index) => (
                 <View key={index} style={styles.detailStepContainer}>
-                  <View style={styles.detailStepNumberContainer}>
-                    <Text style={styles.detailStepNumber}>{index + 1}</Text>
+                  <View style={[styles.detailStepNumberContainer, { backgroundColor: currentThemeColors.surface }]}>
+                    <Text style={[styles.detailStepNumber, { color: currentThemeColors.primary }]}>{index + 1}</Text>
                   </View>
-                  <Text style={[styles.detailStepText, { color: dark ? '#ddd' : '#444' }]}>{step}</Text>
+                  <Text style={[styles.detailStepText, { color: currentThemeColors.text }]}>{step}</Text>
                 </View>
               ))}
             </ScrollView>
 
             <TouchableOpacity 
-              style={styles.detailCloseButton} 
+              style={[styles.detailCloseButton, { backgroundColor: currentThemeColors.primary }]} 
               onPress={() => setModalVisible(false)}
             >
               <Text style={styles.detailCloseButtonText}>Close</Text>
@@ -249,24 +254,19 @@ export default function CookbookScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
   },
   headerContainer: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: '#000',
     borderBottomWidth: 1,
-    borderBottomColor: '#222',
   },
   header: {
     fontSize: 34,
     fontWeight: '900',
-    color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
     fontWeight: '500',
   },
   centered: {
@@ -277,63 +277,46 @@ const styles = StyleSheet.create({
     marginTop: 100,
   },
   emptyText: {
-    color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   emptySubText: {
-    color: '#666',
     fontSize: 16,
     textAlign: 'center',
   },
   scrollContent: {
     flexGrow: 1,
     padding: 15,
-    paddingBottom: 120, // Space for FAB
+    paddingBottom: 120,
   },
   grid: {
     gap: 15,
   },
   recipeCard: {
-    backgroundColor: '#1C1C1E',
     borderRadius: 20,
     padding: 20,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
     position: 'relative',
     overflow: 'hidden',
-  },
-  recipeCardSelected: {
-    borderColor: '#FF2D55',
-    backgroundColor: '#2A181D',
   },
   recipeTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 15,
-    paddingRight: 30, // Make room for checkmark if selected
+    paddingRight: 35,
   },
   macroRow: {
     flexDirection: 'row',
     gap: 10,
   },
   macroPill: {
-    backgroundColor: '#000',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333',
   },
   macroText: {
-    color: '#ddd',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -348,7 +331,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
   },
   bottomBar: {
     position: 'absolute',
@@ -358,17 +340,11 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   fab: {
-    backgroundColor: '#FF2D55',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 18,
     borderRadius: 20,
-    shadowColor: '#FF2D55',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
     gap: 10,
   },
   fabText: {
@@ -378,21 +354,17 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#111',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#1C1C1E',
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
   },
   closeButton: {
     padding: 5,
@@ -403,14 +375,12 @@ const styles = StyleSheet.create({
   },
   categoryContainer: {
     marginBottom: 25,
-    backgroundColor: '#1C1C1E',
     padding: 15,
     borderRadius: 16,
   },
   categoryTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FF2D55',
     marginBottom: 10,
     textTransform: 'uppercase',
   },
@@ -421,13 +391,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   itemText: {
-    color: '#ddd',
     fontSize: 16,
     flex: 1,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'flex-end',
   },
   detailModalContent: {
@@ -435,12 +404,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     padding: 24,
     paddingTop: 12,
-    height: '90%',
+    height: '92%',
   },
   modalIndicator: {
     width: 40,
     height: 5,
-    backgroundColor: '#333',
     borderRadius: 2.5,
     alignSelf: 'center',
     marginBottom: 20,
@@ -463,7 +431,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   detailMacroLabel: {
-    color: '#888',
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -480,7 +447,6 @@ const styles = StyleSheet.create({
   detailSectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FF2D55',
     marginBottom: 15,
   },
   detailListItem: {
@@ -494,17 +460,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   detailStepNumberContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#FF2D55',
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   detailStepNumber: {
-    color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '900',
     fontSize: 14,
   },
   detailStepText: {
@@ -513,7 +477,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   detailCloseButton: {
-    backgroundColor: '#FF2D55',
     paddingVertical: 18,
     borderRadius: 16,
     alignItems: 'center',

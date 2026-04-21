@@ -1,4 +1,3 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
@@ -6,21 +5,18 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../src/api/apiClient';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { ThemeProvider, useAppTheme } from '../src/context/ThemeContext';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
 function RootLayoutNav() {
-  const systemColorScheme = useColorScheme();
-  const { isAuthenticated, isOnboardingComplete, isLoading, themePreference } = useAuth();
+  const { isAuthenticated, isOnboardingComplete, isLoading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
-
-  const activeColorScheme = themePreference === 'system' ? systemColorScheme : themePreference;
+  const { currentThemeColors } = useAppTheme();
 
   useEffect(() => {
     if (isLoading || isAuthenticated === null || (isAuthenticated && isOnboardingComplete === null)) return;
@@ -41,16 +37,18 @@ function RootLayoutNav() {
 
   if (isLoading || isAuthenticated === null || (isAuthenticated && isOnboardingComplete === null)) return null;
 
+  const isDarkBackground = currentThemeColors.background === '#1A1B26' || currentThemeColors.background === '#121212' || currentThemeColors.background === '#262335'; // Check if background is dark for status bar
+
   return (
-    <ThemeProvider value={activeColorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
-      <StatusBar style={activeColorScheme === 'dark' ? 'light' : 'dark'} />
-    </ThemeProvider>
+      <StatusBar style={isDarkBackground ? 'light' : 'dark'} />
+    </>
   );
 }
 
@@ -60,7 +58,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <RootLayoutNav />
+        <ThemeProvider>
+          <RootLayoutNav />
+        </ThemeProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

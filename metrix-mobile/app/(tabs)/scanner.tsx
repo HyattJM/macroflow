@@ -6,6 +6,8 @@ import apiClient from '../../src/api/apiClient';
 import axios from 'axios';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAppTheme } from '../../src/context/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 interface KetoScannerProps {
   user?: {
@@ -14,6 +16,9 @@ interface KetoScannerProps {
 }
 
 export default function KetoScanner({ user }: KetoScannerProps) {
+  const { currentThemeColors, layout, typography } = useAppTheme();
+  const isDark = currentThemeColors.isDark;
+  
   const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState<{ uri: string; base64?: string } | null>(null);
   const [modifier, setModifier] = useState('');
@@ -189,49 +194,51 @@ export default function KetoScanner({ user }: KetoScannerProps) {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container}
+      style={[styles.container, { backgroundColor: currentThemeColors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.toggleContainer}>
+      <View style={[styles.toggleContainer, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, borderWidth: 1 }]}>
         <TouchableOpacity 
-          style={[styles.toggleButton, mode === 'vision' && styles.toggleActive]} 
+          style={[styles.toggleButton, mode === 'vision' && { backgroundColor: currentThemeColors.primary }]} 
           onPress={() => { setMode('vision'); setPhoto(null); setScanned(false); }}
         >
-          <Text style={[styles.toggleText, mode === 'vision' && styles.toggleTextActive]}>AI Vision</Text>
+          <Text style={[styles.toggleText, { color: mode === 'vision' ? '#fff' : currentThemeColors.textSecondary }]}>AI Vision</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.toggleButton, mode === 'barcode' && styles.toggleActive]} 
+          style={[styles.toggleButton, mode === 'barcode' && { backgroundColor: currentThemeColors.primary }]} 
           onPress={() => { setMode('barcode'); setPhoto(null); setScanned(false); }}
         >
-          <Text style={[styles.toggleText, mode === 'barcode' && styles.toggleTextActive]}>Barcode</Text>
+          <Text style={[styles.toggleText, { color: mode === 'barcode' ? '#fff' : currentThemeColors.textSecondary }]}>Barcode</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{flexGrow: 1}}>
         {photo && mode === 'vision' ? (
-          <View style={styles.previewContainer}>
+          <View style={[styles.previewContainer, { backgroundColor: currentThemeColors.background }]}>
             {mode === 'vision' && (
-              <View style={styles.tokenBadge}>
-                <Text style={styles.tokenText}>Free AI Scans: {aiTokens}</Text>
+              <View style={[styles.tokenBadge, { backgroundColor: currentThemeColors.card + 'CC' }]}>
+                <Text style={[styles.tokenText, { color: currentThemeColors.text }]}>Free AI Scans: {aiTokens}</Text>
               </View>
             )}
             <Image source={{ uri: photo.uri }} style={styles.preview} />
             
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Modifiers (e.g. 'McDonalds, no bun'):</Text>
+              <Text style={[styles.label, { color: currentThemeColors.text }]}>Modifiers (e.g. 'McDonalds, no bun'):</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: currentThemeColors.surface, color: currentThemeColors.text, borderColor: currentThemeColors.border }]}
                 placeholder="What did you change?"
+                placeholderTextColor={currentThemeColors.textSecondary}
                 value={modifier}
                 onChangeText={setModifier}
+                keyboardAppearance={isDark ? 'dark' : 'light'}
               />
             </View>
 
             <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => setPhoto(null)}>
-                <Text style={styles.buttonTextBlack}>Retake</Text>
+              <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: currentThemeColors.surface }]} onPress={() => setPhoto(null)}>
+                <Text style={[styles.buttonTextBlack, { color: currentThemeColors.text }]}>Retake</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.primaryButton} onPress={handleScan} disabled={loading}>
+              <TouchableOpacity style={[styles.primaryButton, { backgroundColor: currentThemeColors.primary }]} onPress={handleScan} disabled={loading}>
                 <Text style={styles.buttonText}>{loading ? 'Analyzing...' : 'Analyze Meal'}</Text>
               </TouchableOpacity>
             </View>
@@ -268,16 +275,19 @@ export default function KetoScanner({ user }: KetoScannerProps) {
       {/* Premium Upgrade Modal */}
       <Modal visible={showUpgradeModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Upgrade to Metrix Pro</Text>
+          <View style={[styles.modalContent, { backgroundColor: currentThemeColors.card }]}>
+            <View style={[styles.aiBadge, { backgroundColor: currentThemeColors.primary + '15' }]}>
+              <Ionicons name="sparkles" size={20} color={currentThemeColors.primary} />
+            </View>
+            <Text style={[styles.modalTitle, { color: currentThemeColors.text }]}>Upgrade to Metrix Pro</Text>
             
             <View style={styles.featuresList}>
-              <Text style={styles.featureItem}>✨ Unlimited AI Food Scanning</Text>
-              <Text style={styles.featureItem}>👨‍🍳 Unlock the AI Personal Chef</Text>
-              <Text style={styles.featureItem}>📊 Advanced Macro Analytics</Text>
+              <Text style={[styles.featureItem, { color: currentThemeColors.textSecondary }]}>✨ Unlimited AI Food Scanning</Text>
+              <Text style={[styles.featureItem, { color: currentThemeColors.textSecondary }]}>👨‍🍳 Unlock the AI Personal Chef</Text>
+              <Text style={[styles.featureItem, { color: currentThemeColors.textSecondary }]}>📊 Advanced Macro Analytics</Text>
             </View>
 
-            <TouchableOpacity style={styles.upgradeButton} onPress={() => {
+            <TouchableOpacity style={[styles.upgradeButton, { backgroundColor: currentThemeColors.primary }]} onPress={() => {
               Alert.alert("Connecting to App Store...");
               setShowUpgradeModal(false);
             }}>
@@ -285,7 +295,7 @@ export default function KetoScanner({ user }: KetoScannerProps) {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.closeModalButton} onPress={() => setShowUpgradeModal(false)}>
-              <Text style={styles.closeModalText}>Maybe Later</Text>
+              <Text style={[styles.closeModalText, { color: currentThemeColors.textSecondary }]}>Maybe Later</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -298,15 +308,13 @@ export default function KetoScanner({ user }: KetoScannerProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
-    paddingTop: 45, // Add padding for toggle
+    paddingTop: 45,
   },
   toggleContainer: {
     flexDirection: 'row',
     marginHorizontal: 20,
     marginBottom: 10,
-    backgroundColor: '#222',
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   toggleButton: {
@@ -314,15 +322,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
-  toggleActive: {
-    backgroundColor: '#007AFF',
-  },
   toggleText: {
-    color: '#888',
-    fontWeight: 'bold',
-  },
-  toggleTextActive: {
-    color: '#fff',
+    fontWeight: 'black',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontSize: 12,
   },
   cameraContainer: {
     flex: 1,
@@ -356,51 +360,46 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     flex: 1,
-    backgroundColor: '#fff',
     position: 'relative',
   },
   preview: {
     width: '100%',
     aspectRatio: 3/4,
-    backgroundColor: '#ddd',
   },
   inputContainer: {
     padding: 20,
   },
   label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: 'black',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 15,
-    borderRadius: 8,
+    padding: 18,
+    borderRadius: 16,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 30,
+    gap: 12,
   },
   primaryButton: {
-    flex: 1,
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 8,
+    flex: 2,
+    padding: 18,
+    borderRadius: 16,
     alignItems: 'center',
-    marginLeft: 10,
   },
   secondaryButton: {
     flex: 1,
-    backgroundColor: '#eee',
-    padding: 15,
-    borderRadius: 8,
+    padding: 18,
+    borderRadius: 16,
     alignItems: 'center',
-    marginRight: 10,
   },
   buttonText: {
     color: '#fff',
@@ -408,14 +407,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   buttonTextBlack: {
-    color: '#333',
     fontWeight: 'bold',
     fontSize: 16,
   },
   loadingOverlay: {
     position: 'absolute',
     top: 0, bottom: 0, left: 0, right: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 20,
@@ -423,64 +421,53 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
   tokenBadge: {
     position: 'absolute',
     top: 20,
     alignSelf: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     zIndex: 20,
   },
   tokenText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: 'black',
+    fontSize: 12,
+    textTransform: 'uppercase',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
     width: '85%',
-    backgroundColor: '#fff',
-    borderRadius: 24,
+    borderRadius: 30,
     padding: 30,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
   },
   modalTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#111',
+    fontSize: 24,
+    fontWeight: 'black',
     marginBottom: 20,
     textAlign: 'center',
   },
   featuresList: {
     width: '100%',
     marginBottom: 30,
-    paddingHorizontal: 10,
   },
   featureItem: {
     fontSize: 16,
-    color: '#444',
-    marginBottom: 12,
-    fontWeight: '500',
+    marginBottom: 16,
+    fontWeight: '600',
   },
   upgradeButton: {
     width: '100%',
-    backgroundColor: '#FF2D55',
-    paddingVertical: 18,
-    borderRadius: 14,
+    paddingVertical: 20,
+    borderRadius: 18,
     alignItems: 'center',
     marginBottom: 15,
   },
@@ -493,8 +480,17 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   closeModalText: {
-    color: '#888',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  aiBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   }
 });

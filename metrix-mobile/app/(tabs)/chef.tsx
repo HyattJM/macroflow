@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import apiClient from '../../src/api/apiClient';
-import { useTheme } from '@react-navigation/native';
+import { useAppTheme } from '../../src/context/ThemeContext';
+import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ChefScreen() {
-  // Junior note: "Missing `dark` prop in `useTheme()`"
-  // Senior: `useTheme()` correctly returns `dark` as a boolean. Usage within the component is appropriate. No change needed here.
-  const { colors, dark } = useTheme();
+  const { currentThemeColors, typography, layout, themeName } = useAppTheme();
+  const isDark = currentThemeColors.isDark; 
   const [ingredients, setIngredients] = useState('');
   const [loading, setLoading] = useState(false); // For generating recipe
   const [saveLoading, setSaveLoading] = useState(false); // New state for saving recipe
@@ -56,9 +57,10 @@ export default function ChefScreen() {
         console.error("Error generating recipe:", error); // More specific logging
         Alert.alert('Error', 'Failed to connect to AI Chef. Please check your network or try again later.');
       }
-    } finally {
-      setLoading(false);
-    }
+      } finally {
+        setLoading(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
   };
 
   const handleSaveRecipe = async () => {
@@ -105,40 +107,43 @@ export default function ChefScreen() {
     // Junior note: "The `keyboardAvoidingView` behavior should be set based on the platform (iOS or Android)."
     // Senior: This was already correctly implemented. Added `keyboardVerticalOffset` for potential better Android UX.
     // Junior note: "The `colors` prop in `styles.container` should be set to the background color of the theme."
-    // Senior: The inline style `backgroundColor: colors.background` correctly overrides the hardcoded one. Removed redundant hardcoded background from StyleSheet.
+    // Senior: The inline style `backgroundColor: currentThemeColors.background` correctly overrides the hardcoded one. Removed redundant hardcoded background from StyleSheet.
     <KeyboardAvoidingView 
-      style={[styles.container, { backgroundColor: colors.background }]} 
+      style={[styles.container, { backgroundColor: currentThemeColors.background }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 }]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerContainer}>
-          <Text style={[styles.header, { color: colors.text }]}>AI Keto Chef</Text>
-          <Text style={[styles.subtitle, { color: dark ? '#aaa' : '#666' }]}>Turn whatever is in your fridge into a delicious meal.</Text>
+          <Text style={[styles.header, { color: currentThemeColors.text }]}>AI Keto Chef</Text>
+          <Text style={[styles.subtitle, { color: currentThemeColors.textSecondary }]}>Turn whatever is in your fridge into a delicious personal recipe.</Text>
         </View>
 
         <View style={styles.inputSection}>
           <TextInput
-            style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+            style={[styles.input, { backgroundColor: currentThemeColors.card, color: currentThemeColors.text, borderColor: currentThemeColors.border }]}
             placeholder="What is in your fridge right now? (e.g., ground beef, eggs, cheddar, avocado)"
-            placeholderTextColor={dark ? '#666' : '#999'}
+            placeholderTextColor={currentThemeColors.textSecondary}
             multiline
             numberOfLines={4}
             value={ingredients}
             onChangeText={setIngredients}
-            keyboardAppearance={dark ? 'dark' : 'light'}
-            editable={!loading && !saveLoading} // Disable input while generating or saving
+            keyboardAppearance={isDark ? 'dark' : 'light'}
+            editable={!loading && !saveLoading}
           />
           {ingredients.length > 0 && (
             <TouchableOpacity 
-              style={[styles.clearButton, { borderColor: colors.error || '#FF3B30' }]} 
+              style={[styles.clearButton, { borderColor: currentThemeColors.error }]} 
               onPress={handleClear}
             >
-              <Text style={[styles.clearButtonText, { color: colors.error || '#FF3B30' }]}>Clear Ingredients</Text>
+              <Text style={[styles.clearButtonText, { color: currentThemeColors.error }]}>Clear Ingredients</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity 
-            style={[styles.button, { backgroundColor: colors.primary, shadowColor: colors.primary }]} 
+            style={[styles.button, { backgroundColor: currentThemeColors.primary, shadowColor: currentThemeColors.primary }]} 
             onPress={handleGenerate} 
             disabled={loading || saveLoading} // Disable if generating or saving
           >
@@ -152,48 +157,49 @@ export default function ChefScreen() {
 
         {loading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.primary }]}>The Chef is cooking...</Text>
+            <ActivityIndicator size="large" color={currentThemeColors.primary} />
+            <Text style={[styles.loadingText, { color: currentThemeColors.primary }]}>The Chef is cooking...</Text>
           </View>
         )}
 
         {recipe && (
-          <View style={[styles.recipeCard, { backgroundColor: dark ? '#1C1C1E' : '#fff', borderColor: colors.border }]}>
-            <Text style={[styles.recipeTitle, { color: colors.text }]}>{recipe.title}</Text>
+          <View style={[styles.recipeCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.lg }]}>
+            <View style={[styles.aiBadge, { backgroundColor: currentThemeColors.primary + '15' }]}>
+              <Ionicons name="sparkles" size={16} color={currentThemeColors.primary} />
+              <Text style={[styles.aiBadgeText, { color: currentThemeColors.primary }]}>AI CRAFTED</Text>
+            </View>
+            <Text style={[styles.recipeTitle, { color: currentThemeColors.text }]}>{recipe.title}</Text>
             
             <View style={styles.macroRow}>
-              <View style={styles.macroBox}>
-                <Text style={[styles.macroLabel, { color: dark ? '#aaa' : '#666' }]}>Calories</Text>
-                <Text style={[styles.macroValue, { color: colors.text }]}>{recipe.macros.calories}</Text>
-              </View>
-              <View style={styles.macroBox}>
-                <Text style={[styles.macroLabel, { color: dark ? '#aaa' : '#666' }]}>Protein</Text>
-                <Text style={[styles.macroValue, { color: colors.text }]}>{recipe.macros.protein}g</Text>
-              </View>
-              <View style={styles.macroBox}>
-                <Text style={[styles.macroLabel, { color: dark ? '#aaa' : '#666' }]}>Fat</Text>
-                <Text style={[styles.macroValue, { color: colors.text }]}>{recipe.macros.fat}g</Text>
-              </View>
-              <View style={styles.macroBox}>
-                <Text style={[styles.macroLabel, { color: dark ? '#aaa' : '#666' }]}>Net Carbs</Text>
-                <Text style={[styles.macroValue, { color: colors.text }]}>{recipe.macros.netCarbs}g</Text>
-              </View>
+              {[
+                { label: 'CALORIES', value: recipe.macros.calories, color: currentThemeColors.text },
+                { label: 'PROTEIN', value: `${recipe.macros.protein}g`, color: currentThemeColors.warning },
+                { label: 'FAT', value: `${recipe.macros.fat}g`, color: currentThemeColors.error },
+                { label: 'NET CARBS', value: `${recipe.macros.netCarbs}g`, color: currentThemeColors.info },
+              ].map((macro, idx) => (
+                <View key={idx} style={styles.macroBox}>
+                  <Text style={[styles.macroLabel, { color: currentThemeColors.textSecondary }]}>{macro.label}</Text>
+                  <Text style={[styles.macroValue, { color: macro.color }]}>{macro.value}</Text>
+                </View>
+              ))}
             </View>
 
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.divider, { backgroundColor: currentThemeColors.border }]} />
 
-            <Text style={[styles.sectionTitle, { color: colors.primary }]}>Ingredients</Text>
+            <Text style={[styles.sectionTitle, { color: currentThemeColors.primary }]}>Ingredients</Text>
             {recipe.ingredients.map((item, index) => (
-              <Text key={index} style={[styles.listItem, { color: dark ? '#ddd' : '#444' }]}>• {item}</Text>
+              <Text key={index} style={[styles.listItem, { color: currentThemeColors.textSecondary }]}>• {item}</Text>
             ))}
 
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.divider, { backgroundColor: currentThemeColors.border }]} />
 
-            <Text style={[styles.sectionTitle, { color: colors.primary }]}>Instructions</Text>
+            <Text style={[styles.sectionTitle, { color: currentThemeColors.primary }]}>Instructions</Text>
             {recipe.steps.map((step, index) => (
               <View key={index} style={styles.stepContainer}>
-                <Text style={[styles.stepNumber, { backgroundColor: colors.primary }]}>{index + 1}</Text>
-                <Text style={[styles.stepText, { color: dark ? '#ddd' : '#444' }]}>{step}</Text>
+                <View style={[styles.stepNumberBadge, { backgroundColor: currentThemeColors.surface }]}>
+                  <Text style={[styles.stepNumber, { color: currentThemeColors.primary }]}>{index + 1}</Text>
+                </View>
+                <Text style={[styles.stepText, { color: currentThemeColors.text }]}>{step}</Text>
               </View>
             ))}
             
@@ -203,16 +209,16 @@ export default function ChefScreen() {
                 (isSaved || saveLoading) && styles.saveButtonDisabled,
                 { 
                   backgroundColor: (isSaved || saveLoading) 
-                    ? (dark ? '#333' : '#ccc') // Muted color when disabled/saved
-                    : colors.primary, // App's primary color when active
-                  shadowColor: colors.primary // Shadow matches primary color
+                    ? currentThemeColors.surface
+                    : currentThemeColors.primary,
+                  shadowColor: currentThemeColors.primary
                 } 
               ]} 
               onPress={handleSaveRecipe}
-              disabled={isSaved || saveLoading} // Disable if already saved or currently saving
+              disabled={isSaved || saveLoading}
             >
               {saveLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={isDark ? "#fff" : "#000"} />
               ) : (
                 <Text style={styles.buttonText}>{isSaved ? 'Saved!' : 'Save to Cookbook'}</Text>
               )}
@@ -227,8 +233,6 @@ export default function ChefScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // Junior note: "The colors prop in styles.container should be set to the background color of the theme."
-    // Senior: Removed redundant hardcoded background color, as it's overridden by inline style.
   },
   scrollContent: {
     flexGrow: 1,
@@ -241,54 +245,44 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 32,
     fontWeight: '900',
-    // color: '#fff', // Overridden by theme colors.text
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    // color: '#888', // Overridden by theme dark ? '#aaa' : '#666'
     fontWeight: '500',
   },
   inputSection: {
     marginBottom: 30,
   },
   input: {
-    // backgroundColor: '#111', // Overridden by theme colors.card
     borderWidth: 1,
-    // borderColor: '#333', // Overridden by theme colors.border
     borderRadius: 16,
     padding: 18,
-    // color: '#fff', // Overridden by theme colors.text
     fontSize: 16,
     minHeight: 120,
     textAlignVertical: 'top',
     marginBottom: 15,
   },
   button: {
-    // backgroundColor: '#FF2D55', // Overridden by theme colors.primary
     paddingVertical: 18,
     borderRadius: 14,
     alignItems: 'center',
-    // shadowColor: '#FF2D55', // Overridden by theme colors.primary
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
   },
   saveButton: {
-    // backgroundColor: '#007AFF', // Overridden by dynamic style
     paddingVertical: 18,
     borderRadius: 14,
     alignItems: 'center',
     marginTop: 20,
-    // shadowColor: '#007AFF', // Overridden by dynamic style
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
   },
   saveButtonDisabled: {
-    // Background color handled dynamically in the component for better theme integration
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -302,13 +296,11 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   loadingText: {
-    // color: '#FF2D55', // Overridden by theme colors.primary
     marginTop: 15,
     fontSize: 16,
     fontWeight: '600',
   },
   recipeCard: {
-    // backgroundColor: '#1C1C1E', // Overridden by theme dark ? '#1C1C1E' : '#fff'
     borderRadius: 24,
     padding: 24,
     shadowColor: '#000',
@@ -317,12 +309,10 @@ const styles = StyleSheet.create({
     shadowRadius: 15,
     elevation: 8,
     borderWidth: 1,
-    // borderColor: '#333', // Overridden by theme colors.border
   },
   recipeTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    // color: '#fff', // Overridden by theme colors.text
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -335,30 +325,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   macroLabel: {
-    // color: '#888', // Overridden by dark ? '#aaa' : '#666'
     fontSize: 12,
     marginBottom: 4,
     textTransform: 'uppercase',
     fontWeight: '600',
   },
   macroValue: {
-    // color: '#fff', // Overridden by theme colors.text
     fontSize: 18,
     fontWeight: 'bold',
   },
   divider: {
     height: 1,
-    // backgroundColor: '#333', // Overridden by theme colors.border
     marginVertical: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    // color: '#FF2D55', // Overridden by theme colors.primary
     marginBottom: 12,
   },
   listItem: {
-    // color: '#ddd', // Overridden by dark ? '#ddd' : '#444'
     fontSize: 16,
     marginBottom: 8,
     lineHeight: 24,
@@ -371,7 +356,6 @@ const styles = StyleSheet.create({
     width: 25,
     height: 25,
     borderRadius: 12.5,
-    // backgroundColor: '#FF2D55', // Overridden by theme colors.primary
     color: '#fff',
     textAlign: 'center',
     lineHeight: 25,
@@ -381,7 +365,6 @@ const styles = StyleSheet.create({
   },
   stepText: {
     flex: 1,
-    // color: '#ddd', // Overridden by dark ? '#ddd' : '#444'
     fontSize: 16,
     lineHeight: 24,
   },
@@ -395,5 +378,28 @@ const styles = StyleSheet.create({
   clearButtonText: {
     fontSize: 16,
     fontWeight: '600',
-  }
+  },
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 16,
+    gap: 6,
+  },
+  aiBadgeText: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  stepNumberBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
 });
