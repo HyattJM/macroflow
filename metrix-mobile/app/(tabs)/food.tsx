@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, 
 import apiClient from '../../src/api/apiClient';
 import { useFocusEffect } from 'expo-router';
 import { useAppTheme } from '../../src/context/ThemeContext';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function FoodLogScreen() {
@@ -134,14 +134,14 @@ export default function FoodLogScreen() {
     }
   };
 
-  const onDateChange = (event, selected) => {
-    setShowPicker(Platform.OS === 'ios');
-    if (selected) {
-      setSelectedDate(selected);
-      if (Platform.OS === 'android') setShowPicker(false);
-    } else {
-        setShowPicker(false);
-    }
+  const onDayPress = (day) => {
+    // The calendar returns a string like '2026-04-21'
+    // We need to parse it to a local Date object so the rest of your app doesn't break
+    const [year, month, date] = day.dateString.split('-');
+    const newDate = new Date(year, month - 1, date);
+    
+    setSelectedDate(newDate);
+    setShowPicker(false);
   };
 
   const renderHeader = () => (
@@ -179,14 +179,35 @@ export default function FoodLogScreen() {
         </View>
       </View>
       
-      {showPicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display="default"
-          onChange={onDateChange}
-        />
-      )}
+      {/* Custom Themeable Calendar Modal */}
+      <Modal visible={showPicker} animationType="fade" transparent={true} onRequestClose={() => setShowPicker(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPressOut={() => setShowPicker(false)}>
+          <View style={[styles.modalContent, { backgroundColor: currentThemeColors.surface, padding: 0, overflow: 'hidden' }]}>
+            <Calendar
+              current={formatDate(selectedDate)}
+              onDayPress={onDayPress}
+              theme={{
+                backgroundColor: currentThemeColors.surface,
+                calendarBackground: currentThemeColors.surface,
+                textSectionTitleColor: currentThemeColors.textSecondary,
+                selectedDayBackgroundColor: currentThemeColors.primary,
+                selectedDayTextColor: '#ffffff',
+                todayTextColor: currentThemeColors.warning || '#FF9800',
+                dayTextColor: currentThemeColors.text,
+                textDisabledColor: currentThemeColors.border || '#333333',
+                dotColor: currentThemeColors.primary,
+                selectedDotColor: '#ffffff',
+                arrowColor: currentThemeColors.primary,
+                monthTextColor: currentThemeColors.text,
+                indicatorColor: currentThemeColors.primary,
+                textDayFontWeight: '500',
+                textMonthFontWeight: 'bold',
+                textDayHeaderFontWeight: '600',
+              }}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 
