@@ -1,7 +1,10 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Dimensions, DeviceEventEmitter, TouchableOpacity, Alert, Modal } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import apiClient from '../../src/api/apiClient';
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -345,7 +348,7 @@ export default function DashboardScreen() {
       </View>
 
       {/* AI Token Display */}
-      <View style={[styles.tokenCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+      <Animated.View entering={FadeInUp.delay(100)} style={[styles.tokenCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
         <View style={styles.tokenInfo}>
           <View style={[styles.tokenIconBadge, { backgroundColor: currentThemeColors.primary + '15' }]}>
             <Ionicons name="sparkles" size={24} color={currentThemeColors.primary} />
@@ -358,11 +361,12 @@ export default function DashboardScreen() {
         <View style={[styles.tokenProgressBar, { backgroundColor: currentThemeColors.surface }]}>
           <View style={[styles.tokenProgressFill, { width: `${(tokens / 50) * 100}%`, backgroundColor: currentThemeColors.primary }]} />
         </View>
-      </View>
+      </Animated.View>
 
       {/* Intermittent Fasting Card */}
       {isIfEnabled ? (
-        <TouchableOpacity 
+        <AnimatedTouchableOpacity 
+          entering={FadeInUp.delay(200)}
           activeOpacity={0.8}
           onPress={() => router.push('/settings')}
           style={[
@@ -384,38 +388,40 @@ export default function DashboardScreen() {
             </View>
             <Ionicons name={isFeedingWindow ? "restaurant-outline" : "moon-outline"} size={40} color={isFeedingWindow ? currentThemeColors.success : currentThemeColors.warning} opacity={0.6} />
           </View>
-        </TouchableOpacity>
+        </AnimatedTouchableOpacity>
       ) : (
-        <View style={[styles.fastingDisabledCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border }]}>
+        <Animated.View entering={FadeInUp.delay(200)} style={[styles.fastingDisabledCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border }]}>
           <Text style={[styles.fastingDisabledText, { color: currentThemeColors.textSecondary }]}>Intermittent Fasting is disabled.</Text>
           <TouchableOpacity onPress={() => router.push('/settings')}>
             <Text style={[styles.enableLink, { color: currentThemeColors.primary }]}>Enable in Settings</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       )}
 
       {/* Heart Rate Metric Card */}
-      <View style={[styles.heartRateCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
+      <Animated.View entering={FadeInUp.delay(300)} style={[styles.heartRateCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Ionicons name="heart" size={20} color={currentThemeColors.error} />
           <Text style={[styles.heartRateLabel, { color: currentThemeColors.textSecondary, marginLeft: 8 }]}>HEART RATE</Text>
         </View>
         <Text style={[styles.heartRateValue, { color: currentThemeColors.text }]}>{heartRate} <Text style={{ fontSize: 16, fontWeight: 'normal' }}>BPM</Text></Text>
-      </View>
+      </Animated.View>
 
-      <CalendarHeatMap 
-        history={workoutHistory} 
-        isDark={isDark} 
-        onSelectDay={(day) => {
-          setSelectedDayContent(day);
-          setModalVisible(true);
-        }}
-      />
+      <Animated.View entering={FadeInUp.delay(400)}>
+        <CalendarHeatMap 
+          history={workoutHistory} 
+          isDark={isDark} 
+          onSelectDay={(day) => {
+            setSelectedDayContent(day);
+            setModalVisible(true);
+          }}
+        />
+      </Animated.View>
 
-      <Text style={[styles.title, { color: currentThemeColors.text, marginTop: layout.spacing.lg }]}>Daily Breakdown</Text>
+      <Animated.Text entering={FadeInUp.delay(500)} style={[styles.title, { color: currentThemeColors.text, marginTop: layout.spacing.lg }]}>Daily Breakdown</Animated.Text>
       
       {/* Carb Tracker Card */}
-      <View style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+      <Animated.View entering={FadeInUp.delay(600)} style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
         <Text style={[styles.cardTitle, { color: currentThemeColors.info }]}>Net Carbs</Text>
         <View style={styles.progressHeader}>
           <Text style={[styles.carbValue, { color: currentThemeColors.text }]}>{currentCarbs.toFixed(1)}<Text style={{ fontSize: 18 }}>g</Text></Text>
@@ -424,10 +430,10 @@ export default function DashboardScreen() {
         <View style={[styles.progressBarBackground, { backgroundColor: currentThemeColors.surface }]}>
           <View style={[styles.progressBarFill, { width: `${carbProgress}%`, backgroundColor: currentCarbs > goals.net_carbs ? currentThemeColors.error : currentThemeColors.info }]} />
         </View>
-      </View>
+      </Animated.View>
 
       {/* Pie Chart Card - Visual Polish */}
-      <View style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+      <Animated.View entering={FadeInUp.delay(700)} style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
         <Text style={[styles.cardTitle, { color: currentThemeColors.text }]}>Macro Split</Text>
         <View style={{ alignItems: 'center' }}>
           <PieChart
@@ -444,10 +450,10 @@ export default function DashboardScreen() {
             absolute
           />
         </View>
-      </View>
+      </Animated.View>
 
       {/* Water Tracker Card */}
-      <View style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+      <Animated.View entering={FadeInUp.delay(800)} style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <Text style={[styles.cardTitle, { color: currentThemeColors.success, marginBottom: 0 }]}>Water Intake</Text>
           <Ionicons name="water" size={24} color={currentThemeColors.success} />
@@ -467,7 +473,7 @@ export default function DashboardScreen() {
             <Text style={[styles.waterBtnText, { color: currentThemeColors.success }]}>+ 16 oz</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Other Metrics Grid */}
       <View style={styles.grid}>
@@ -476,14 +482,14 @@ export default function DashboardScreen() {
           { label: 'Protein', value: macros ? macros.protein.toFixed(0) : 0, goal: goals.protein, color: currentThemeColors.warning, progress: (macros?.protein / goals.protein) * 100 },
           { label: 'Fat', value: macros ? macros.fat.toFixed(0) : 0, goal: goals.fat, color: currentThemeColors.error, progress: (macros?.fat / goals.fat) * 100 },
         ].map((item, idx) => (
-          <View key={idx} style={[styles.metricCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
+          <Animated.View entering={FadeInUp.delay(900 + (idx * 100))} key={idx} style={[styles.metricCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
             <Text style={[styles.metricLabel, { color: currentThemeColors.textSecondary }]}>{item.label.toUpperCase()}</Text>
             <Text style={[styles.metricValue, { color: currentThemeColors.text }]}>{item.value}</Text>
             <Text style={[styles.metricGoal, { color: currentThemeColors.textSecondary }]}>/ {item.goal}{item.label !== 'Calories' ? 'g' : ''}</Text>
             <View style={[styles.miniProgress, { backgroundColor: currentThemeColors.surface }]}>
               <View style={[styles.miniFill, { width: `${Math.min(item.progress, 100)}%`, backgroundColor: item.color }]} />
             </View>
-          </View>
+          </Animated.View>
         ))}
       </View>
     </ScrollView>

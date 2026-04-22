@@ -154,11 +154,13 @@ export default function WorkoutScreen() {
     };
     
     setCurrentSets([...currentSets, newSet]);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
-    // Instant update of historicalMax for subsequent sets in this session
+    // Instant update of historicalMax for subsequent sets in this session and trigger haptics
     if (isPR) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       setHistoricalMax({ weight: weightVal, reps: repsVal });
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     setReps(''); // Clear reps, usually weight stays
     if (isTimerEnabled) {
@@ -195,6 +197,7 @@ export default function WorkoutScreen() {
         setWeight('');
         setReps('');
         fetchWorkouts();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert("Success", "Exercise session logged!");
       }
     } catch (error) {
