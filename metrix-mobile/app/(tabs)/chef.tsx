@@ -4,6 +4,7 @@ import apiClient from '../../src/api/apiClient';
 import { useAppTheme } from '../../src/context/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 
 export default function ChefScreen() {
   const { currentThemeColors, typography, layout, themeName } = useAppTheme();
@@ -22,7 +23,7 @@ export default function ChefScreen() {
     // Junior note: "Missing validation: The code doesn't validate the `ingredients` input before sending it to the API."
     // Senior: The original code already included `if (!ingredients.trim()) return;`. Enhanced with an Alert for better UX.
     if (!ingredients.trim()) {
-      Alert.alert('Input Required', 'Please enter some ingredients to generate a recipe.');
+      Toast.show({ type: 'error', text1: 'Input Required', text2: 'Please enter some ingredients to generate a recipe.' });
       return;
     }
 
@@ -46,16 +47,16 @@ export default function ChefScreen() {
         });
       } else {
         // Fallback for API success but data status not 'success'
-        Alert.alert('Error', response.data.error || 'Failed to generate recipe. Please try again.');
+        Toast.show({ type: 'error', text1: 'Error', text2: response.data.error || 'Failed to generate recipe. Please try again.' });
       }
     } catch (error) {
       // Junior note: "Incorrect Alert message: In `handleSaveRecipe()`, the error message for `capacity reached` is incorrect."
       // Senior: Junior misidentified the function. The `429` error handler is in `handleGenerate()` and is already correct.
       if (error?.response?.status === 429) {
-        Alert.alert('Capacity Reached', error.response.data.error || 'AI servers are currently at capacity. Please try again later.');
+        Toast.show({ type: 'error', text1: 'Capacity Reached', text2: error.response.data.error || 'AI servers are currently at capacity. Please try again later.' });
       } else {
         console.error("Error generating recipe:", error); // More specific logging
-        Alert.alert('Error', 'Failed to connect to AI Chef. Please check your network or try again later.');
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to connect to AI Chef. Please check your network or try again later.' });
       }
       } finally {
         setLoading(false);
@@ -83,7 +84,7 @@ export default function ChefScreen() {
       const response = await apiClient.post('/save-recipe/', payload);
       if (response.data.status === 'success') {
         setIsSaved(true);
-        Alert.alert('Success', 'Recipe saved to Cookbook!');
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Recipe saved to Cookbook!' });
         
         // Clear screen after a short delay for better UX
         setTimeout(() => {
@@ -92,12 +93,12 @@ export default function ChefScreen() {
           setIsSaved(false);
         }, 1500);
       } else {
-        Alert.alert('Error', response.data.error || 'Failed to save recipe. Please try again.');
+        Toast.show({ type: 'error', text1: 'Error', text2: response.data.error || 'Failed to save recipe. Please try again.' });
       }
     } catch (error) {
       console.error("Error saving recipe:", error);
       // More descriptive error for the user
-      Alert.alert('Error', 'Failed to save recipe. Please check your network or try again later.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save recipe. Please check your network or try again later.' });
     } finally {
       setSaveLoading(false);
     }

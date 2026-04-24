@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, TextInput, KeyboardAvoidingView, Platform, ScrollView, Modal } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useEffect } from 'react';
 import apiClient from '../../src/api/apiClient';
@@ -102,14 +103,15 @@ export default function KetoScanner({ user }: KetoScannerProps) {
       if (response.data.status === 'success') {
         setAiTokens(prev => Math.max(0, prev - 1)); // instantly decrement visually
         const foodName = response.data.data.food_name || response.data.data.name || 'Unknown Food';
-        Alert.alert(
-          'Keto Vision Result',
-          `Added: ${foodName}\nCalories: ${response.data.data.calories}\nProtein: ${response.data.data.protein}g\nCarbs: ${response.data.data.carbs}g\nFat: ${response.data.data.fat}g`
-        );
+        Toast.show({
+          type: 'success',
+          text1: 'Keto Vision Result',
+          text2: `Added: ${foodName} | ${response.data.data.calories}kcal | P:${response.data.data.protein}g C:${response.data.data.carbs}g F:${response.data.data.fat}g`
+        });
         setPhoto(null);
         setModifier('');
       } else {
-        Alert.alert('Error', 'Failed to parse image from Keto Vision.');
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to parse image from Keto Vision.' });
       }
     } catch (error) {
       const status = error?.response?.status;
@@ -119,11 +121,11 @@ export default function KetoScanner({ user }: KetoScannerProps) {
       if (status === 402) {
         setShowUpgradeModal(true); // ONLY show paywall on true 402 "Out of Tokens"
       } else if (status === 403) {
-        Alert.alert('Auth Error', 'The server rejected the token (403 Forbidden).');
+        Toast.show({ type: 'error', text1: 'Auth Error', text2: 'The server rejected the token (403 Forbidden).' });
       } else if (status === 429) {
-        Alert.alert('Capacity Reached', 'AI servers are temporarily busy, try again in a moment.');
+        Toast.show({ type: 'error', text1: 'Capacity Reached', text2: 'AI servers are temporarily busy, try again in a moment.' });
       } else {
-        Alert.alert('Server Error', `Failed to communicate with backend. Status: ${status || 'Unknown'}`);
+        Toast.show({ type: 'error', text1: 'Server Error', text2: `Failed to communicate with backend. Status: ${status || 'Unknown'}` });
       }
     } finally {
       setLoading(false);
@@ -175,20 +177,24 @@ export default function KetoScanner({ user }: KetoScannerProps) {
         const postResponse = await apiClient.post('/log-nutrition/', payload);
 
         if (postResponse.data.status === 'success') {
-          Alert.alert(
-             'Barcode Scanned!',
-             `Added: ${productName}\nCalories: ${payload.calories}\nProtein: ${payload.protein}g\nNet Carbs: ${payload.carbs}g\nFat: ${payload.fat}g`,
-             [{ text: 'OK', onPress: () => setScanned(false) }]
-          );
+          Toast.show({
+            type: 'success',
+            text1: 'Barcode Scanned!',
+            text2: `Added: ${productName} | ${payload.calories}kcal | P:${payload.protein}g C:${payload.carbs}g F:${payload.fat}g`
+          });
+          setScanned(false);
         } else {
-          Alert.alert('Error', 'Failed to log nutrition', [{ text: 'OK', onPress: () => setScanned(false) }]);
+          Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to log nutrition' });
+          setScanned(false);
         }
       } else {
-        Alert.alert('Not Found', 'Product not found in OpenFoodFacts.', [{ text: 'OK', onPress: () => setScanned(false) }]);
+        Toast.show({ type: 'error', text1: 'Not Found', text2: 'Product not found in OpenFoodFacts.' });
+        setScanned(false);
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Failed to fetch barcode info.', [{ text: 'OK', onPress: () => setScanned(false) }]);
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch barcode info.' });
+      setScanned(false);
     }
   };
 

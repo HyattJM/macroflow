@@ -2,8 +2,10 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { useEffect, useState } from 'react';
+import { View, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../src/api/apiClient';
+import Toast from 'react-native-toast-message';
 
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { ThemeProvider, useAppTheme } from '../src/context/ThemeContext';
@@ -54,12 +56,34 @@ function RootLayoutNav() {
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+const ToastWrapper = () => {
+  const { currentThemeColors } = useAppTheme();
+  
+  const toastConfig = {
+    success: (props: any) => (
+      <View style={{ minHeight: 60, paddingVertical: 10, width: '90%', backgroundColor: currentThemeColors.surface, borderRadius: 8, borderLeftWidth: 5, borderLeftColor: currentThemeColors.primary, justifyContent: 'center', paddingHorizontal: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5 }}>
+        <Text style={{ color: currentThemeColors.text, fontSize: 16, fontWeight: 'bold' }}>{props.text1}</Text>
+        {props.text2 ? <Text style={{ color: '#aaa', fontSize: 14 }}>{props.text2}</Text> : null}
+      </View>
+    ),
+    error: (props: any) => (
+      <View style={{ minHeight: 60, paddingVertical: 10, width: '90%', backgroundColor: currentThemeColors.surface, borderRadius: 8, borderLeftWidth: 5, borderLeftColor: currentThemeColors.error, justifyContent: 'center', paddingHorizontal: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5 }}>
+        <Text style={{ color: currentThemeColors.text, fontSize: 16, fontWeight: 'bold' }}>{props.text1}</Text>
+        {props.text2 ? <Text style={{ color: '#aaa', fontSize: 14 }}>{props.text2}</Text> : null}
+      </View>
+    )
+  };
+
+  return <Toast config={toastConfig} />;
+};
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <ThemeProvider>
           <RootLayoutNav />
+          <ToastWrapper />
         </ThemeProvider>
       </AuthProvider>
     </GestureHandlerRootView>

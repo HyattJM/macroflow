@@ -5,6 +5,7 @@ import { useFocusEffect } from 'expo-router';
 import { useAppTheme } from '../../src/context/ThemeContext';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 
 export default function FoodLogScreen() {
   const { currentThemeColors, layout, typography } = useAppTheme();
@@ -127,10 +128,11 @@ export default function FoodLogScreen() {
         setEditingLog(null);
         DeviceEventEmitter.emit('refreshDashboard');
         fetchData(); // Refresh totals instead of just replacing the row
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Food log updated successfully!' });
       }
     } catch (err) {
       console.error('Failed to update', err);
-      Alert.alert('Error', 'Failed to update log');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update log' });
     }
   };
 

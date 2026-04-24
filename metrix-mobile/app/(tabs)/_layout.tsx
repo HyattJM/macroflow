@@ -3,8 +3,7 @@ import { withLayoutContext } from 'expo-router';
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '../../src/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
 // Create a custom Expo Router layout wrapper for Material Top Tabs
@@ -12,16 +11,16 @@ const { Navigator } = createMaterialTopTabNavigator();
 export const SwipeableTabs = withLayoutContext(Navigator);
 
 function CustomTabBar({ state, descriptors, navigation }) {
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
-  const isDark = colorScheme === 'dark';
+  const { currentThemeColors } = useAppTheme();
 
   return (
     <View style={[
       styles.tabBar, 
       { 
-        backgroundColor: isDark ? '#1C1C1E' : '#fff',
-        borderTopColor: isDark ? '#333' : '#eee'
+        backgroundColor: currentThemeColors.surface,
+        borderTopColor: currentThemeColors.border,
+        borderTopWidth: 1,
+        position: 'relative' // ensure it's not absolute
       }
     ]}>
       {state.routes.map((route, index) => {
@@ -43,8 +42,8 @@ function CustomTabBar({ state, descriptors, navigation }) {
           }
         };
 
-        const activeColor = theme.tint;
-        const inactiveColor = '#8e8e93';
+        const activeColor = currentThemeColors.primary;
+        const inactiveColor = currentThemeColors.textSecondary || '#8e8e93';
         const color = isFocused ? activeColor : inactiveColor;
 
         return (
@@ -66,8 +65,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const { currentThemeColors } = useAppTheme();
 
   return (
     <SwipeableTabs
@@ -76,6 +74,11 @@ export default function TabLayout() {
       keyboardDismissMode="on-drag"
       screenOptions={{
         swipeEnabled: true,
+        tabBarStyle: {
+          backgroundColor: currentThemeColors.surface,
+          borderTopWidth: 1,
+          borderTopColor: currentThemeColors.border,
+        }
       }}>
       <SwipeableTabs.Screen
         name="index"

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Modal, DeviceEventEmitter, Dimensions, SectionList, Switch } from 'react-native';
 import { LineChart } from "react-native-chart-kit";
 import { Swipeable } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 import apiClient from '../../src/api/apiClient';
 import { useAppTheme } from '../../src/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,6 +54,43 @@ export default function WorkoutScreen() {
   const [isSelectorVisible, setSelectorVisible] = useState(false);
   const [expandedCats, setExpandedCats] = useState([]);
   const [isTimerEnabled, setIsTimerEnabled] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [timerMax, setTimerMax] = useState(90);
+
+  // Animated States
+  const indicatorPosition = useSharedValue(0);
+  const timerWidth = useSharedValue(100);
+
+  useEffect(() => {
+    if (activeTab === 'track') indicatorPosition.value = withSpring(0);
+    else if (activeTab === 'history') indicatorPosition.value = withSpring(1);
+    else if (activeTab === 'graph') indicatorPosition.value = withSpring(2);
+  }, [activeTab]);
+
+  const animatedIndicatorStyle = useAnimatedStyle(() => {
+    return {
+      left: `${indicatorPosition.value * 33.33}%`
+    };
+  });
+
+  useEffect(() => {
+    if (timerMax > 0) {
+      timerWidth.value = withSpring(Math.min(100, Math.max(0, (restTimeLeft / timerMax) * 100)));
+    }
+  }, [restTimeLeft, timerMax]);
+
+  const animatedTimerStyle = useAnimatedStyle(() => {
+    return { width: `${timerWidth.value}%` };
+  });
+
+  const filteredExerciseDatabase = useMemo(() => {
+    if (!searchQuery.trim()) return EXERCISE_DATABASE.map(cat => ({ title: cat.category, color: cat.color, data: cat.exercises }));
+    const lowerQuery = searchQuery.toLowerCase();
+    return EXERCISE_DATABASE.map(cat => {
+      const filtered = cat.exercises.filter(ex => ex.toLowerCase().includes(lowerQuery));
+      return { title: cat.category, color: cat.color, data: filtered };
+    }).filter(cat => cat.data.length > 0);
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchWorkouts();
@@ -139,7 +178,7 @@ export default function WorkoutScreen() {
 
   const handleLogSet = () => {
     if (!weight || !reps) {
-       Alert.alert("Missing Info", "Please enter both weight and reps.");
+       Toast.show({ type: 'error', text1: 'Missing Info', text2: 'Please enter both weight and reps.' });
        return;
     }
     
@@ -164,6 +203,7 @@ export default function WorkoutScreen() {
     }
     setReps(''); // Clear reps, usually weight stays
     if (isTimerEnabled) {
+      setTimerMax(90);
       setRestTimeLeft(90); // Start 90s rest timer
     }
   };
@@ -174,11 +214,11 @@ export default function WorkoutScreen() {
 
   const handleFinishExercise = async () => {
     if (!activeExercise || !activeExercise.trim()) {
-      Alert.alert("Exercise Name", "Please select an exercise.");
+      Toast.show({ type: 'error', text1: 'Exercise Name', text2: 'Please select an exercise.' });
       return;
     }
     if (currentSets.length === 0) {
-      Alert.alert("No Sets", "Add at least one set before finishing.");
+      Toast.show({ type: 'error', text1: 'No Sets', text2: 'Add at least one set before finishing.' });
       return;
     }
 
@@ -198,11 +238,11 @@ export default function WorkoutScreen() {
         setReps('');
         fetchWorkouts();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Success", "Exercise session logged!");
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Exercise session logged!' });
       }
     } catch (error) {
       console.error("Logging Error:", error);
-      Alert.alert("Error", "Failed to log workout.");
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to log workout.' });
     } finally {
       setSubmitting(false);
     }
@@ -244,9 +284,10 @@ export default function WorkoutScreen() {
         setWorkouts(prev => prev.map(w => w.id === editingLog.id ? res.data.data : w));
         setEditModalVisible(false);
         setEditingLog(null);
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Lift updated successfully!' });
       }
     } catch (e) {
-      Alert.alert("Error", "Failed to update lift");
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update lift' });
     }
   };
 
@@ -320,6 +361,7 @@ export default function WorkoutScreen() {
       {/* Sticky Segmented Control */}
       <View style={[styles.segmentedWrapper, { backgroundColor: currentThemeColors.background }]}>
         <View style={[styles.segmentedControl, { backgroundColor: currentThemeColors.surface }]}>
+          <Animated.View style={[{ position: 'absolute', top: 4, bottom: 4, width: '33.33%', backgroundColor: currentThemeColors.primary, borderRadius: 20 }, animatedIndicatorStyle]} />
           {['track', 'history', 'graph'].map((tab) => (
             <TouchableOpacity
               key={tab}
@@ -327,10 +369,7 @@ export default function WorkoutScreen() {
                 setActiveTab(tab);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              style={[
-                styles.segmentBtn,
-                activeTab === tab && { backgroundColor: currentThemeColors.primary }
-              ]}
+              style={[styles.segmentBtn]}
             >
               <Text style={[
                 styles.segmentText,
@@ -347,7 +386,7 @@ export default function WorkoutScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={[styles.title, { color: currentThemeColors.text, paddingHorizontal: 20, marginTop: 20 }]}>Active Exercise</Text>
           
-          <View style={[styles.activeSection, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
+          <View style={[styles.activeSection, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, shadowColor: currentThemeColors.primary, shadowOpacity: 0.15 }]}>
             <View style={styles.headerRow}>
               <TouchableOpacity 
                 style={[styles.exerciseSelectorTrigger, { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.border }]} 
@@ -392,27 +431,46 @@ export default function WorkoutScreen() {
             ))}
 
             <View style={[styles.inputRow, { borderTopWidth: 1, borderTopColor: currentThemeColors.border, paddingTop: 15 }]}>
-               <View style={{ flex: 0.5, alignItems: 'center' }}>
+               <View style={{ flex: 0.3, alignItems: 'center' }}>
                   <Text style={{ color: currentThemeColors.primary, fontWeight: '900', fontSize: 18 }}>{currentSets.length + 1}</Text>
                </View>
-               <TextInput
-                 style={[styles.gridInput, { flex: 1, color: currentThemeColors.text, backgroundColor: currentThemeColors.surface }]}
-                 placeholder="LBS"
-                 placeholderTextColor={currentThemeColors.textSecondary}
-                 keyboardType="numeric"
-                 value={weight}
-                 onChangeText={setWeight}
-                 keyboardAppearance='dark'
-               />
-               <TextInput
-                 style={[styles.gridInput, { flex: 1, color: currentThemeColors.text, backgroundColor: currentThemeColors.surface }]}
-                 placeholder="REPS"
-                 placeholderTextColor={currentThemeColors.textSecondary}
-                 keyboardType="numeric"
-                 value={reps}
-                 onChangeText={setReps}
-                 keyboardAppearance='dark'
-               />
+               
+               <View style={{ flex: 1.2, flexDirection: 'row', alignItems: 'center', backgroundColor: currentThemeColors.surface, borderRadius: 10, marginHorizontal: 5 }}>
+                 <TouchableOpacity onPress={() => { setWeight(prev => String(Math.max(0, (parseFloat(prev) || 0) - 5))); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.stepperBtn}>
+                   <Ionicons name="remove" size={18} color={currentThemeColors.textSecondary} />
+                 </TouchableOpacity>
+                 <TextInput
+                   style={[styles.gridInput, { flex: 1, color: currentThemeColors.text, marginHorizontal: 0, backgroundColor: 'transparent' }]}
+                   placeholder="LBS"
+                   placeholderTextColor={currentThemeColors.textSecondary}
+                   keyboardType="numeric"
+                   value={weight}
+                   onChangeText={setWeight}
+                   keyboardAppearance='dark'
+                 />
+                 <TouchableOpacity onPress={() => { setWeight(prev => String((parseFloat(prev) || 0) + 5)); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.stepperBtn}>
+                   <Ionicons name="add" size={18} color={currentThemeColors.textSecondary} />
+                 </TouchableOpacity>
+               </View>
+
+               <View style={{ flex: 1.2, flexDirection: 'row', alignItems: 'center', backgroundColor: currentThemeColors.surface, borderRadius: 10, marginHorizontal: 5 }}>
+                 <TouchableOpacity onPress={() => { setReps(prev => String(Math.max(0, (parseInt(prev) || 0) - 1))); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.stepperBtn}>
+                   <Ionicons name="remove" size={18} color={currentThemeColors.textSecondary} />
+                 </TouchableOpacity>
+                 <TextInput
+                   style={[styles.gridInput, { flex: 1, color: currentThemeColors.text, marginHorizontal: 0, backgroundColor: 'transparent' }]}
+                   placeholder="REPS"
+                   placeholderTextColor={currentThemeColors.textSecondary}
+                   keyboardType="numeric"
+                   value={reps}
+                   onChangeText={setReps}
+                   keyboardAppearance='dark'
+                 />
+                 <TouchableOpacity onPress={() => { setReps(prev => String((parseInt(prev) || 0) + 1)); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.stepperBtn}>
+                   <Ionicons name="add" size={18} color={currentThemeColors.textSecondary} />
+                 </TouchableOpacity>
+               </View>
+
                <TouchableOpacity style={[styles.addSetBtn, { backgroundColor: currentThemeColors.primary }]} onPress={handleLogSet}>
                  <Text style={styles.addSetBtnText}>LOG</Text>
                </TouchableOpacity>
@@ -420,14 +478,19 @@ export default function WorkoutScreen() {
           </View>
                     {/* Auto-Rest Timer */}
           {restTimeLeft > 0 && (
-            <View style={[styles.timerCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.primary, ...layout.shadows.md }]}>
+            <View style={[styles.timerCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.primary, shadowColor: currentThemeColors.primary, shadowOpacity: 0.15 }]}>
               <View style={styles.timerHeader}>
                 <Ionicons name="hourglass-outline" size={20} color={currentThemeColors.primary} />
                 <Text style={[styles.timerLabel, { color: currentThemeColors.primary }]}>RESTING</Text>
               </View>
               <Text style={[styles.timerValue, { color: currentThemeColors.text }]}>{formatTime(restTimeLeft)}</Text>
+              
+              <View style={[styles.timerBarBg, { backgroundColor: currentThemeColors.surface }]}>
+                <Animated.View style={[styles.timerBarFill, { backgroundColor: currentThemeColors.primary, shadowColor: currentThemeColors.primary, shadowOpacity: 0.8, shadowRadius: 8, elevation: 4 }, animatedTimerStyle]} />
+              </View>
+
               <View style={styles.timerActions}>
-                <TouchableOpacity onPress={() => setRestTimeLeft(prev => prev + 30)} style={[styles.timerBtn, { backgroundColor: currentThemeColors.surface }]}>
+                <TouchableOpacity onPress={() => { setRestTimeLeft(prev => prev + 30); setTimerMax(prev => prev + 30); }} style={[styles.timerBtn, { backgroundColor: currentThemeColors.surface }]}>
                   <Text style={[styles.timerBtnText, { color: currentThemeColors.text }]}>+30s</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setRestTimeLeft(prev => Math.max(0, prev - 30))} style={[styles.timerBtn, { backgroundColor: currentThemeColors.surface }]}>
@@ -485,7 +548,7 @@ export default function WorkoutScreen() {
               </View>
             )}
             renderItem={({ item }) => (
-              <View style={[styles.historyItem, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
+              <View style={[styles.historyItem, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, shadowColor: currentThemeColors.primary, shadowOpacity: 0.15 }]}>
                 <View style={styles.historyTopRow}>
                   <Text style={[styles.historyName, { color: currentThemeColors.text }]}>{item.exercise_name}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -609,21 +672,30 @@ export default function WorkoutScreen() {
         </View>
       </Modal>
 
-      {/* Exercise Selector Modal */}
+      {/* Exercise Selector Bottom Sheet */}
       <Modal visible={isSelectorVisible} animationType="slide" transparent={true} onRequestClose={() => setSelectorVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: dark ? '#1C1C1E' : '#fff', height: '80%' }]}>
+        <View style={[styles.modalOverlay, { justifyContent: 'flex-end' }]}>
+          <View style={[styles.bottomSheet, { backgroundColor: currentThemeColors.background }]}>
+            <View style={styles.sheetHandle} />
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: currentThemeColors.text }]}>Choose Exercise</Text>
+              <Text style={[styles.modalTitle, { color: currentThemeColors.text, marginBottom: 0 }]}>Choose Exercise</Text>
               <TouchableOpacity onPress={() => setSelectorVisible(false)}>
-                <Ionicons name="close" size={24} color={currentThemeColors.text} />
+                <Ionicons name="close-circle" size={28} color={currentThemeColors.textSecondary} />
               </TouchableOpacity>
             </View>
+            <TextInput
+              style={[styles.searchSheetInput, { backgroundColor: currentThemeColors.surface, color: currentThemeColors.text, borderColor: currentThemeColors.border }]}
+              placeholder="Search exercise..."
+              placeholderTextColor={currentThemeColors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              keyboardAppearance={dark ? 'dark' : 'light'}
+            />
             <SectionList
-              sections={EXERCISE_DATABASE.map(cat => ({ title: cat.category, color: cat.color, data: cat.exercises }))}
+              sections={filteredExerciseDatabase}
               keyExtractor={(item) => item}
               renderSectionHeader={({ section }) => {
-                const isExpanded = expandedCats.includes(section.title);
+                const isExpanded = expandedCats.includes(section.title) || searchQuery.length > 0;
                 return (
                   <TouchableOpacity 
                       onPress={() => toggleCat(section.title)}
@@ -638,10 +710,11 @@ export default function WorkoutScreen() {
                 );
               }}
               renderItem={({ item, section }) => {
-                if (!expandedCats.includes(section.title)) return null;
+                const isExpanded = expandedCats.includes(section.title) || searchQuery.length > 0;
+                if (!isExpanded) return null;
                 return (
                   <TouchableOpacity 
-                        onPress={() => { setActiveExercise(item); setSelectorVisible(false); }}
+                        onPress={() => { setActiveExercise(item); setSelectorVisible(false); setSearchQuery(''); }}
                         style={[styles.exItem, { borderBottomColor: currentThemeColors.border }]} 
                   >
                     <View style={styles.exItemInner}>
@@ -742,7 +815,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 20,
   },
   title: {
     fontSize: 28,
@@ -1105,4 +1178,66 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 4,
   },
+  bottomSheet: {
+    width: '100%',
+    height: '85%',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  sheetHandle: {
+    width: 50,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#555',
+    alignSelf: 'center',
+    marginBottom: 15,
+  },
+  searchSheetInput: {
+    height: 45,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    marginBottom: 15,
+  },
+  stepperBtn: {
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  timerBarBg: {
+    width: '100%',
+    height: 6,
+    borderRadius: 3,
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+  timerBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  exItemInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  catIndicator: {
+    width: 8,
+    height: 20,
+    borderRadius: 4,
+    marginRight: 10,
+  },
+  catDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 15,
+  }
 });
