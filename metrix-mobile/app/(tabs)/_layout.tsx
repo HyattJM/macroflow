@@ -1,5 +1,6 @@
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { withLayoutContext } from 'expo-router';
+// Navigation Version 2.0 - Settings Tab Removed
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 
@@ -121,12 +122,6 @@ export default function TabLayout() {
           title: 'Cookbook',
           tabBarIcon: ({ color }) => <Ionicons size={24} name="book-outline" color={color} />,
         }}
-      />
-      <SwipeableTabs.Screen
-        name="settings"
-        options={{
-          href: null,
-        } as any}
       />
     </SwipeableTabs>
   );

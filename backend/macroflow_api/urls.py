@@ -42,4 +42,5 @@ urlpatterns = [
     path('exercise-max/', views.get_exercise_max, name='exercise-max'),
     path('workout-history/', views.get_workout_history, name='workout-history'),
     path('biometrics/', views.biometrics_view, name='biometrics'),
+    path('profile/', views.profile_view, name='profile'),
 ]

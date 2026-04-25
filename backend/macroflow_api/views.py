@@ -712,6 +712,33 @@ def get_workout_history(request):
         sections = [{'title': k, 'data': v} for k, v in grouped.items()]
         return Response(sections)
 
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def profile_view(request):
+    try:
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        if request.method == 'GET':
+            return Response({
+                "status": "success",
+                "data": {
+                    "age": profile.age,
+                    "height_inches": profile.height_inches,
+                    "weight_lbs": profile.weight_lbs,
+                    "gender": profile.gender,
+                    "activity_level": profile.activity_level
+                }
+            })
+        elif request.method == 'POST':
+            profile.age = int(request.data.get('age', profile.age))
+            profile.height_inches = float(request.data.get('height_inches', profile.height_inches))
+            profile.weight_lbs = float(request.data.get('weight_lbs', profile.weight_lbs))
+            profile.gender = request.data.get('gender', profile.gender)
+            profile.activity_level = request.data.get('activity_level', profile.activity_level)
+            profile.save()
+            return Response({"status": "success", "message": "Profile updated successfully"})
+    except Exception as e:
+        return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 @api_view(['POST', 'GET'])
 @permission_classes([IsAuthenticated])
 def biometrics_view(request):

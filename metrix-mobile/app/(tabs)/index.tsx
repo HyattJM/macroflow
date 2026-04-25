@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Dimensions, DeviceEventEmitter, TouchableOpacity, Alert, Modal, TextInput, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Dimensions, DeviceEventEmitter, TouchableOpacity, Alert, Modal, TextInput, FlatList, Switch, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { PieChart, LineChart } from 'react-native-chart-kit';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -19,12 +20,50 @@ import Constants from 'expo-constants';
 import { WorkoutCalendarHistory } from '../../src/components/workout/WorkoutCalendarHistory';
 
 const screenWidth = Dimensions.get('window').width;
+const screenHeight = Dimensions.get('window').height;
+
+// Helper to format time for display
+const formatTime = (date: Date) => {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
+// Helper to parse HH:mm into a Date object
+const parseTime = (timeStr: string) => {
+  try {
+    const [h, m] = timeStr.split(':').map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return d;
+  } catch (e) {
+    const d = new Date();
+    d.setHours(9, 0, 0, 0);
+    return d;
+  }
+};
+
+const calculateDynamicGoals = (currentWeightLbs: number, age: number, heightCm: number) => {
+  const weightKg = currentWeightLbs / 2.20462;
+  
+  // Mifflin-St Jeor Equation for Men
+  const bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5;
+  const tdee = bmr * 1.55; // Moderate activity factor
+  
+  const targetNetCarbs = 50;
+  const targetProtein = currentWeightLbs * 1; // 1g per lb
+  const targetFat = (tdee - (targetProtein * 4) - (targetNetCarbs * 4)) / 9;
+  
+  return {
+    calories: Math.round(tdee),
+    protein: Math.round(targetProtein),
+    fat: Math.round(targetFat),
+    net_carbs: targetNetCarbs
+  };
+};
 
 export default function DashboardScreen() {
   const [macros, setMacros] = useState(null);
   const [waterOz, setWaterOz] = useState(0);
   const [loading, setLoading] = useState(true);
-  // Flat per-set workouts array — fed into WorkoutCalendarHistory
   const [workouts, setWorkouts] = useState<any[]>([]);
   const [tokens, setTokens] = useState(0);
   const [timeLeft, setTimeLeft] = useState('');
@@ -44,13 +83,27 @@ export default function DashboardScreen() {
   const [biometricHistory, setBiometricHistory] = useState<any[]>([]);
   const [historyTab, setHistoryTab] = useState<'list' | 'graph'>('list');
   
-  const { currentThemeColors, typography, layout } = useAppTheme();
+  // Profile Stats
+  const [userProfile, setUserProfile] = useState({
+    age: 26,
+    height_inches: 72,
+    weight_lbs: 180,
+  });
+  const [showSettings, setShowSettings] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  // Consolidated Settings State
+  const [ifProtocol, setIfProtocol] = useState('16/8');
+  const [ifStartTime, setIfStartTime] = useState(parseTime('21:00'));
+  const [ifEndTime, setIfEndTime] = useState(parseTime('09:00'));
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  
+  const { themeName, currentThemeColors, setThemeName, layout, typography } = useAppTheme();
   const isDark = currentThemeColors.isDark;
 
   const router = useRouter();
   const { logout } = useAuth();
-
-  // Goals will be fetched from backend
 
   useFocusEffect(
     useCallback(() => {
@@ -59,8 +112,45 @@ export default function DashboardScreen() {
       loadIfSettings();
       fetchWorkouts();
       fetchBiometrics();
-    }, [ifStart, ifEnd, isIfEnabled])
+      fetchProfile();
+    }, [ifStart, ifEnd, isIfEnabled, ifStartTime, ifEndTime])
   );
+
+  const fetchProfile = async () => {
+    try {
+      const res = await apiClient.get('/profile/');
+      if (res.data.status === 'success') {
+        setUserProfile(res.data.data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch profile:", e);
+    }
+  };
+
+  const saveProfile = async () => {
+    setProfileLoading(true);
+    try {
+      const res = await apiClient.post('/profile/', userProfile);
+      if (res.data.status === 'success') {
+        Toast.show({
+          type: 'success',
+          text1: 'Profile Saved',
+          text2: 'Your dynamic goals have been updated.',
+        });
+        setShowSettings(false);
+        fetchBiometrics(); // Refresh to ensure everything is in sync
+      }
+    } catch (e) {
+      console.error("Failed to save profile:", e);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update profile stats.',
+      });
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   useEffect(() => {
     setupHealthConnect();
@@ -80,13 +170,86 @@ export default function DashboardScreen() {
   const loadIfSettings = async () => {
     try {
       const enabled = await AsyncStorage.getItem('if_enabled');
+      const prot = await AsyncStorage.getItem('if_protocol');
       const start = await AsyncStorage.getItem('if_start_time');
       const end = await AsyncStorage.getItem('if_end_time');
+
       if (enabled !== null) setIsIfEnabled(enabled === 'true');
-      if (start !== null) setIfStart(start);
-      if (end !== null) setIfEnd(end);
+      if (prot !== null) setIfProtocol(prot);
+      if (start !== null) {
+        setIfStart(start);
+        setIfStartTime(parseTime(start));
+      }
+      if (end !== null) {
+        setIfEnd(end);
+        setIfEndTime(parseTime(end));
+      }
     } catch (e) {
       console.error("Failed to load IF settings on dashboard", e);
+    }
+  };
+
+  const saveIfSetting = async (key: string, value: string) => {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch (e) {
+      console.error(`Failed to save ${key}`, e);
+    }
+  };
+
+  const handleIfToggle = (val: boolean) => {
+    setIsIfEnabled(val);
+    saveIfSetting('if_enabled', val.toString());
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const handleProtocolChange = (p: string) => {
+    setIfProtocol(p);
+    saveIfSetting('if_protocol', p);
+    
+    let startStr = '21:00';
+    let endStr = '13:00';
+
+    if (p === '16/8') {
+      startStr = '21:00';
+      endStr = '13:00';
+    } else if (p === '12/12') {
+      startStr = '21:00';
+      endStr = '09:00';
+    }
+
+    if (p !== 'Custom') {
+      const start = parseTime(startStr);
+      const end = parseTime(endStr); 
+      setIfStartTime(start);
+      setIfEndTime(end);
+      setIfStart(startStr);
+      setIfEnd(endStr);
+      saveIfSetting('if_start_time', startStr);
+      saveIfSetting('if_end_time', endStr);
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const onStartTimeChange = (event: any, selectedDate?: Date) => {
+    setShowStartPicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setIfStartTime(selectedDate);
+      const timeStr = formatTime(selectedDate);
+      setIfStart(timeStr);
+      saveIfSetting('if_start_time', timeStr);
+      if (ifProtocol !== 'Custom') setIfProtocol('Custom');
+    }
+  };
+
+  const onEndTimeChange = (event: any, selectedDate?: Date) => {
+    setShowEndPicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setIfEndTime(selectedDate);
+      const timeStr = formatTime(selectedDate);
+      setIfEnd(timeStr);
+      saveIfSetting('if_end_time', timeStr);
+      if (ifProtocol !== 'Custom') setIfProtocol('Custom');
     }
   };
 
@@ -158,7 +321,7 @@ export default function DashboardScreen() {
       const res = await apiClient.get('/biometrics/');
       if (res.data.status === 'success' && res.data.data.length > 0) {
         const sortedData = [...res.data.data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setBiometricHistory(res.data.data); // Raw data for graph (usually chronologically sorted from backend)
+        setBiometricHistory(res.data.data); 
         
         const latest = res.data.data[res.data.data.length - 1];
         setCurrentWeight(latest.weight_lbs);
@@ -178,8 +341,7 @@ export default function DashboardScreen() {
     
     setBiometricsLoading(true);
     try {
-      // Formula: (weight_lbs / (height_inches * height_inches)) * 703. Height = 72.
-      const heightInches = 72;
+      const heightInches = userProfile.height_inches || 72;
       const bmi = (weightVal / (heightInches * heightInches)) * 703;
       
       const res = await apiClient.post('/biometrics/', {
@@ -260,6 +422,12 @@ export default function DashboardScreen() {
     }
   };
 
+  const dynamicGoals = useMemo(() => {
+    const weight = currentWeight || userProfile.weight_lbs;
+    const heightCm = userProfile.height_inches * 2.54;
+    return calculateDynamicGoals(weight, userProfile.age, heightCm);
+  }, [currentWeight, userProfile, macros]);
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -268,13 +436,8 @@ export default function DashboardScreen() {
     );
   }
 
-  const goals = macros?.goals || {
-    calories: 2000,
-    protein: 150,
-    fat: 140,
-    net_carbs: 30
-  };
-  const WATER_GOAL = 128; // Default if not in profile yet
+  const goals = dynamicGoals;
+  const WATER_GOAL = 128; 
 
   const currentCarbs = macros ? macros.net_carbs : 0;
   const carbProgress = Math.min((currentCarbs / goals.net_carbs) * 100, 100);
@@ -321,12 +484,172 @@ export default function DashboardScreen() {
         </View>
         <View style={{ flex: 1 }} />
         <TouchableOpacity 
-          onPress={() => router.push('/settings')} 
+          onPress={() => setShowSettings(!showSettings)} 
           style={[styles.iconHeaderBtn, { backgroundColor: currentThemeColors.card, ...layout.shadows.sm }]}
         >
-          <Ionicons name="settings-outline" size={24} color={currentThemeColors.primary} />
+          <Ionicons name={showSettings ? "close" : "settings-outline"} size={24} color={currentThemeColors.primary} />
         </TouchableOpacity>
       </View>
+
+      {/* Consolidated Settings Overlay as a true Modal */}
+      <Modal visible={showSettings} transparent={true} animationType="none">
+        <Animated.View 
+          entering={FadeInUp.duration(400)}
+          style={[styles.settingsOverlay, { backgroundColor: currentThemeColors.card, borderBottomColor: currentThemeColors.border, height: '100%', maxHeight: '100%' }]}
+        >
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.overlayTitle, { color: currentThemeColors.text, marginBottom: 0 }]}>Settings & Profile</Text>
+              <TouchableOpacity onPress={() => setShowSettings(false)}>
+                <Ionicons name="close" size={32} color={currentThemeColors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Profile & Stats Section */}
+            <View style={[styles.settingsSection, { backgroundColor: currentThemeColors.surface + '50', borderColor: currentThemeColors.border }]}>
+              <Text style={[styles.sectionHeader, { color: currentThemeColors.primary }]}>Profile & Stats</Text>
+              <View style={styles.profileGrid}>
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: currentThemeColors.textSecondary }]}>AGE</Text>
+                  <TextInput 
+                    style={[styles.overlayInput, { backgroundColor: currentThemeColors.surface, color: currentThemeColors.text, borderColor: currentThemeColors.border }]}
+                    value={userProfile.age.toString()}
+                    keyboardType="numeric"
+                    onChangeText={(text) => setUserProfile({...userProfile, age: parseInt(text) || 0})}
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: currentThemeColors.textSecondary }]}>HEIGHT (IN)</Text>
+                  <TextInput 
+                    style={[styles.overlayInput, { backgroundColor: currentThemeColors.surface, color: currentThemeColors.text, borderColor: currentThemeColors.border }]}
+                    value={userProfile.height_inches.toString()}
+                    keyboardType="numeric"
+                    onChangeText={(text) => setUserProfile({...userProfile, height_inches: parseFloat(text) || 0})}
+                  />
+                </View>
+              </View>
+              
+              <TouchableOpacity 
+                style={[styles.saveProfileBtn, { backgroundColor: currentThemeColors.primary }]}
+                onPress={saveProfile}
+                disabled={profileLoading}
+              >
+                {profileLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveProfileText}>Sync Biometrics</Text>}
+              </TouchableOpacity>
+            </View>
+
+            {/* Intermittent Fasting Section */}
+            <View style={[styles.settingsSection, { backgroundColor: currentThemeColors.surface + '50', borderColor: currentThemeColors.border }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={[styles.sectionHeader, { color: currentThemeColors.primary, marginBottom: 0 }]}>Fasting Timer</Text>
+                <Switch value={isIfEnabled} onValueChange={handleIfToggle} trackColor={{ false: '#333', true: currentThemeColors.primary }} />
+              </View>
+
+              {isIfEnabled && (
+                <>
+                  <View style={styles.protocolRow}>
+                    {['12/12', '16/8', 'Custom'].map((p) => (
+                      <TouchableOpacity 
+                         key={p} 
+                         style={[
+                           styles.protocolBtn, 
+                           { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.border },
+                           ifProtocol === p && { backgroundColor: currentThemeColors.primary, borderColor: currentThemeColors.primary }
+                         ]}
+                         onPress={() => handleProtocolChange(p)}
+                       >
+                         <Text style={[styles.protocolText, { color: currentThemeColors.textSecondary }, ifProtocol === p && { color: '#fff' }]}>{p}</Text>
+                       </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <View style={styles.timeSection}>
+                    <TouchableOpacity style={[styles.timeBox, { backgroundColor: currentThemeColors.surface }]} onPress={() => setShowStartPicker(true)}>
+                      <Text style={styles.timeLabel}>Starts</Text>
+                      <Text style={[styles.timeValue, { color: currentThemeColors.text, fontSize: 16 }]}>{formatTime(ifStartTime)}</Text>
+                    </TouchableOpacity>
+                    <Ionicons name="arrow-forward" size={16} color={currentThemeColors.textSecondary} style={{ marginHorizontal: 8 }} />
+                    <TouchableOpacity style={[styles.timeBox, { backgroundColor: currentThemeColors.surface }]} onPress={() => setShowEndPicker(true)}>
+                      <Text style={styles.timeLabel}>Ends</Text>
+                      <Text style={[styles.timeValue, { color: currentThemeColors.text, fontSize: 16 }]}>{formatTime(ifEndTime)}</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {showStartPicker && (
+                    <DateTimePicker value={ifStartTime} mode="time" is24Hour={true} onChange={onStartTimeChange} />
+                  )}
+                  {showEndPicker && (
+                    <DateTimePicker value={ifEndTime} mode="time" is24Hour={true} onChange={onEndTimeChange} />
+                  )}
+                </>
+              )}
+            </View>
+
+            {/* Appearance Section */}
+            <View style={[styles.settingsSection, { backgroundColor: currentThemeColors.surface + '50', borderColor: currentThemeColors.border }]}>
+              <Text style={[styles.sectionHeader, { color: currentThemeColors.primary }]}>Appearance</Text>
+              <View style={[styles.protocolRow, { flexWrap: 'wrap' }]}>
+                {[
+                  { id: 'defaultDark', label: 'Tokyo' },
+                  { id: 'deepSeaDark', label: 'Ocean' },
+                  { id: 'synthWave', label: 'Synth' },
+                  { id: 'classicLight', label: 'Light' }
+                ].map((t) => (
+                  <TouchableOpacity 
+                    key={t.id} 
+                    style={[
+                      styles.protocolBtn, 
+                      { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.border, minWidth: '45%' },
+                      themeName === t.id && { backgroundColor: currentThemeColors.primary, borderColor: currentThemeColors.primary }
+                    ]}
+                    onPress={() => {
+                      setThemeName(t.id);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                  >
+                    <Text style={[styles.protocolText, { color: currentThemeColors.textSecondary }, themeName === t.id && { color: '#fff' }]}>{t.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* ACCOUNT SECTION (Now clearly visible) */}
+            <View style={[styles.settingsSection, { backgroundColor: currentThemeColors.surface + '50', borderColor: currentThemeColors.border }]}>
+              <Text style={[styles.sectionHeader, { color: currentThemeColors.error }]}>Account</Text>
+              <TouchableOpacity 
+                style={[styles.dangerButton, { backgroundColor: currentThemeColors.error + '10', borderColor: currentThemeColors.error }]} 
+                onPress={() => {
+                  Alert.alert("Logout", "Are you sure you want to log out?", [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Logout", style: "destructive", onPress: logout }
+                  ]);
+                }}
+              >
+                <Ionicons name="log-out-outline" size={18} color={currentThemeColors.error} />
+                <Text style={[styles.dangerButtonText, { color: currentThemeColors.error }]}>Log Out</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.dangerButton, { backgroundColor: currentThemeColors.error + '10', borderColor: currentThemeColors.error, marginTop: 12 }]} 
+                onPress={() => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  Alert.alert(
+                    "Reset Account",
+                    "This will wipe your profile and onboarding data. This action cannot be undone.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Reset", style: "destructive", onPress: logout }
+                    ]
+                  );
+                }}
+              >
+                <Ionicons name="refresh-outline" size={18} color={currentThemeColors.error} />
+                <Text style={[styles.dangerButtonText, { color: currentThemeColors.error }]}>Reset All Data</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </Animated.View>
+      </Modal>
 
       {/* Body Metrics Card */}
       <Animated.View entering={FadeInUp.delay(50)} style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm, marginBottom: 20 }]}>
@@ -395,7 +718,7 @@ export default function DashboardScreen() {
         <AnimatedTouchableOpacity 
           entering={FadeInUp.delay(200)}
           activeOpacity={0.8}
-          onPress={() => router.push('/settings')}
+          onPress={() => setShowSettings(true)} // FIXED THE ROUTE CRASH HERE
           style={[
             styles.fastingCard, 
             { backgroundColor: currentThemeColors.card, borderColor: isFeedingWindow ? currentThemeColors.success + '40' : currentThemeColors.warning + '40' },
@@ -419,7 +742,7 @@ export default function DashboardScreen() {
       ) : (
         <Animated.View entering={FadeInUp.delay(200)} style={[styles.fastingDisabledCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border }]}>
           <Text style={[styles.fastingDisabledText, { color: currentThemeColors.textSecondary }]}>Intermittent Fasting is disabled.</Text>
-          <TouchableOpacity onPress={() => router.push('/settings')}>
+          <TouchableOpacity onPress={() => setShowSettings(true)}> {/* FIXED THE ROUTE CRASH HERE */}
             <Text style={[styles.enableLink, { color: currentThemeColors.primary }]}>Enable in Settings</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -983,5 +1306,130 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
+  },
+  settingsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    maxHeight: screenHeight * 0.85,
+  },
+  settingsSection: {
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 16,
+    textTransform: 'uppercase',
+  },
+  overlayTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  profileGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  inputGroup: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    marginBottom: 6,
+    letterSpacing: 1,
+  },
+  overlayInput: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  saveProfileBtn: {
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveProfileText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  protocolRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  protocolBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  protocolText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  timeSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  timeBox: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  timeLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    color: '#8E8E93',
+  },
+  timeValue: {
+    fontWeight: '900',
+  },
+  dangerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  dangerButtonText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 10,
   }
 });
