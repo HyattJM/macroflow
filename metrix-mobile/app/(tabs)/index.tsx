@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Dimensions, DeviceEventEmitter, TouchableOpacity, Alert, Modal } from 'react-native';
-import { PieChart } from 'react-native-chart-kit';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Dimensions, DeviceEventEmitter, TouchableOpacity, Alert, Modal, TextInput, FlatList } from 'react-native';
+import { PieChart, LineChart } from 'react-native-chart-kit';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 import apiClient from '../../src/api/apiClient';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -10,101 +11,21 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '../../src/context/ThemeContext';
 import { EXERCISE_DATABASE } from './workout';
 import { setupHealthConnect } from '../../src/utils/biometrics';
 import Constants from 'expo-constants';
+import { WorkoutCalendarHistory } from '../../src/components/workout/WorkoutCalendarHistory';
 
 const screenWidth = Dimensions.get('window').width;
-
-const CalendarHeatMap = ({ history, isDark, onSelectDay }) => {
-  const getCategoryColor = (exerciseName) => {
-    for (const group of EXERCISE_DATABASE) {
-      if (group.exercises.includes(exerciseName)) {
-        return group.color;
-      }
-    }
-    return '#8E8E93'; // Fallback gray
-  };
-
-  const getDaysInMonth = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysCount = new Date(year, month + 1, 0).getDate();
-    
-    const days = [];
-    // Padding for start of month
-    for (let i = 0; i < firstDay; i++) {
-      days.push({ type: 'empty' });
-    }
-    // Month days
-    for (let i = 1; i <= daysCount; i++) {
-        const fullDate = `${year}-${(month + 1).toString().padStart(2, '0')}-${i.toString().padStart(2, '0')}`;
-        days.push({ type: 'day', day: i, fullDate });
-    }
-    return days;
-  };
-
-  const days = getDaysInMonth();
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  const renderDay = (item, index) => {
-    if (item.type === 'empty') {
-      return <View key={`empty-${index}`} style={styles.calendarDayCell} />;
-    }
-
-    const isToday = item.fullDate === todayStr;
-    const dayLogs = history.find(section => section.title === item.fullDate)?.data || [];
-
-    return (
-      <TouchableOpacity 
-        key={item.fullDate} 
-        onPress={() => {
-          if (dayLogs.length > 0) {
-            onSelectDay({ date: item.fullDate, workouts: dayLogs });
-          }
-        }}
-        activeOpacity={dayLogs.length > 0 ? 0.6 : 1}
-        style={[styles.calendarDayCell, isToday && styles.todayCell]}
-      >
-        <Text style={[styles.dayNumber, { color: isDark ? '#fff' : '#000' }, isToday && styles.todayNumber]}>
-          {item.day}
-        </Text>
-        <View style={styles.dotContainer}>
-          {dayLogs.map((log, index) => (
-            <View 
-              key={`dot-${item.fullDate}-${index}`} 
-              style={[styles.workoutDot, { backgroundColor: getCategoryColor(log.exercise_name) }]} 
-            />
-          ))}
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  return (
-    <View style={[styles.calendarCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
-      <Text style={[styles.cardTitle, { color: isDark ? '#fff' : '#333' }]}>Workout Consistency</Text>
-      <View style={styles.calendarHeaderRow}>
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, index) => (
-          <Text key={`day-header-${index}`} style={styles.calendarHeaderDay}>{d}</Text>
-        ))}
-      </View>
-      <View style={styles.calendarGrid}>
-        {days.map((day, idx) => renderDay(day, idx))}
-      </View>
-    </View>
-  );
-};
 
 export default function DashboardScreen() {
   const [macros, setMacros] = useState(null);
   const [waterOz, setWaterOz] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [workoutHistory, setWorkoutHistory] = useState([]);
+  // Flat per-set workouts array — fed into WorkoutCalendarHistory
+  const [workouts, setWorkouts] = useState<any[]>([]);
   const [tokens, setTokens] = useState(0);
   const [timeLeft, setTimeLeft] = useState('');
   const [isFeedingWindow, setIsFeedingWindow] = useState(false);
@@ -112,17 +33,16 @@ export default function DashboardScreen() {
   const [ifStart, setIfStart] = useState('21:00');
   const [ifEnd, setIfEnd] = useState('09:00');
   const [heartRate, setHeartRate] = useState('--');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedDayContent, setSelectedDayContent] = useState(null);
-
-  const totalVolume = useMemo(() => {
-    return workoutHistory.reduce((acc, section) => {
-      const sectionVol = section.data.reduce((sAcc, item) => {
-        return sAcc + (item.weight || 0) * (item.reps || 0); 
-      }, 0);
-      return acc + sectionVol;
-    }, 0);
-  }, [workoutHistory]);
+  
+  // Biometrics
+  const [currentWeight, setCurrentWeight] = useState<number | null>(null);
+  const [currentBmi, setCurrentBmi] = useState<number | null>(null);
+  const [biometricsLoading, setBiometricsLoading] = useState(false);
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [newWeightInput, setNewWeightInput] = useState('');
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [biometricHistory, setBiometricHistory] = useState<any[]>([]);
+  const [historyTab, setHistoryTab] = useState<'list' | 'graph'>('list');
   
   const { currentThemeColors, typography, layout } = useAppTheme();
   const isDark = currentThemeColors.isDark;
@@ -137,7 +57,8 @@ export default function DashboardScreen() {
       fetchDailyMacros();
       fetchTokens();
       loadIfSettings();
-      fetchWorkoutHistory();
+      fetchWorkouts();
+      fetchBiometrics();
     }, [ifStart, ifEnd, isIfEnabled])
   );
 
@@ -232,6 +153,67 @@ export default function DashboardScreen() {
     }
   };
 
+  const fetchBiometrics = async () => {
+    try {
+      const res = await apiClient.get('/biometrics/');
+      if (res.data.status === 'success' && res.data.data.length > 0) {
+        const sortedData = [...res.data.data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setBiometricHistory(res.data.data); // Raw data for graph (usually chronologically sorted from backend)
+        
+        const latest = res.data.data[res.data.data.length - 1];
+        setCurrentWeight(latest.weight_lbs);
+        setCurrentBmi(latest.bmi);
+      }
+    } catch (e) {
+      console.error("Failed to fetch biometrics:", e);
+    }
+  };
+
+  const handleUpdateWeight = async () => {
+    const weightVal = parseFloat(newWeightInput);
+    if (!weightVal || weightVal <= 0) {
+      Alert.alert('Invalid Weight', 'Please enter a valid weight.');
+      return;
+    }
+    
+    setBiometricsLoading(true);
+    try {
+      // Formula: (weight_lbs / (height_inches * height_inches)) * 703. Height = 72.
+      const heightInches = 72;
+      const bmi = (weightVal / (heightInches * heightInches)) * 703;
+      
+      const res = await apiClient.post('/biometrics/', {
+        weight_lbs: weightVal,
+        bmi: Math.round(bmi * 10) / 10
+      });
+      
+      if (res.data.status === 'success') {
+        setCurrentWeight(weightVal);
+        setCurrentBmi(Math.round(bmi * 10) / 10);
+        setShowWeightModal(false);
+        setNewWeightInput('');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Toast.show({
+          type: 'success',
+          text1: 'Metrics Updated!',
+          text2: `Weight logged as ${weightVal} lbs`,
+          position: 'top',
+          visibilityTime: 2500,
+        });
+      }
+    } catch (e) {
+      console.error('Failed to update weight', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update weight.',
+        position: 'top',
+      });
+    } finally {
+      setBiometricsLoading(false);
+    }
+  };
+
   const fetchDailyMacros = async () => {
     try {
       const token = await AsyncStorage.getItem('auth_token');
@@ -254,21 +236,20 @@ export default function DashboardScreen() {
     }
   };
 
-  const fetchWorkoutHistory = async () => {
+  const fetchWorkouts = async () => {
     try {
-      const res = await apiClient.get('/workout-history/');
-      // Backend returns sections: [{title: 'YYYY-MM-DD', data: [...]}, ...]
-      setWorkoutHistory(res.data);
-    } catch (e) {
-      if (e.response?.status === 401) {
-        return; // Silent return for unauthorized
+      const response = await apiClient.get('/workouts/');
+      if (response.data.status === 'success') {
+        setWorkouts(response.data.data);
       }
-      Alert.alert("Error", "Failed to fetch workout history");
-      console.error("Failed to fetch workout history", e);
+    } catch (e: any) {
+      if (e.response?.status === 401) return;
+      console.error('Failed to fetch workouts for dashboard', e);
     }
   };
 
-  const handleLogWater = async (amount) => {
+  const handleLogWater = async (amount: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const res = await apiClient.post('/log-water/', { amount_oz: amount });
       if (res.data.status === 'success') {
@@ -347,6 +328,52 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Body Metrics Card */}
+      <Animated.View entering={FadeInUp.delay(50)} style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm, marginBottom: 20 }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={[styles.cardTitle, { color: currentThemeColors.text, marginBottom: 0, flex: 1 }]}>Body Metrics</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity 
+              style={{ 
+                backgroundColor: 'transparent', 
+                borderColor: currentThemeColors.border, 
+                borderWidth: 1,
+                paddingHorizontal: 12, 
+                paddingVertical: 4, 
+                borderRadius: 8,
+              }} 
+              onPress={() => setShowHistoryModal(true)}
+            >
+              <Text style={{ color: currentThemeColors.textSecondary, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }}>History</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={{ 
+                backgroundColor: currentThemeColors.surface, 
+                borderColor: currentThemeColors.primary, 
+                borderWidth: 1,
+                paddingHorizontal: 12, 
+                paddingVertical: 4, 
+                borderRadius: 8,
+              }} 
+              onPress={() => setShowWeightModal(true)}
+            >
+              <Text style={{ color: currentThemeColors.primary, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }}>Update</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', marginTop: 15, justifyContent: 'space-between' }}>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={[styles.metricLabel, { color: currentThemeColors.textSecondary }]}>CURRENT WEIGHT</Text>
+            <Text style={[styles.metricValue, { color: currentThemeColors.primary, fontSize: 24 }]}>{currentWeight ? currentWeight.toFixed(1) : '--'} <Text style={{ fontSize: 14 }}>lbs</Text></Text>
+          </View>
+          <View style={{ width: 1, backgroundColor: currentThemeColors.border, height: '80%', alignSelf: 'center' }} />
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={[styles.metricLabel, { color: currentThemeColors.textSecondary }]}>CURRENT BMI</Text>
+            <Text style={[styles.metricValue, { color: currentThemeColors.text, fontSize: 24 }]}>{currentBmi ? currentBmi.toFixed(1) : '--'}</Text>
+          </View>
+        </View>
+      </Animated.View>
+
       {/* AI Token Display */}
       <Animated.View entering={FadeInUp.delay(100)} style={[styles.tokenCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
         <View style={styles.tokenInfo}>
@@ -407,15 +434,8 @@ export default function DashboardScreen() {
         <Text style={[styles.heartRateValue, { color: currentThemeColors.text }]}>{heartRate} <Text style={{ fontSize: 16, fontWeight: 'normal' }}>BPM</Text></Text>
       </Animated.View>
 
-      <Animated.View entering={FadeInUp.delay(400)}>
-        <CalendarHeatMap 
-          history={workoutHistory} 
-          isDark={isDark} 
-          onSelectDay={(day) => {
-            setSelectedDayContent(day);
-            setModalVisible(true);
-          }}
-        />
+      <Animated.View entering={FadeInUp.delay(400)} style={{ marginHorizontal: 0, marginBottom: 8 }}>
+        <WorkoutCalendarHistory workouts={workouts} />
       </Animated.View>
 
       <Animated.Text entering={FadeInUp.delay(500)} style={[styles.title, { color: currentThemeColors.text, marginTop: layout.spacing.lg }]}>Daily Breakdown</Animated.Text>
@@ -435,17 +455,17 @@ export default function DashboardScreen() {
       {/* Pie Chart Card - Visual Polish */}
       <Animated.View entering={FadeInUp.delay(700)} style={[styles.premiumCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
         <Text style={[styles.cardTitle, { color: currentThemeColors.text }]}>Macro Split</Text>
-        <View style={{ alignItems: 'center' }}>
+        <View style={{ alignItems: 'center', paddingRight: 10 }}>
           <PieChart
             data={chartData}
-            width={screenWidth - 80}
+            width={screenWidth - 70}
             height={200}
             chartConfig={{
               color: (opacity = 1) => currentThemeColors.text,
             }}
             accessor={"population"}
             backgroundColor={"transparent"}
-            paddingLeft={"15"}
+            paddingLeft={"0"}
             center={[10, 0]}
             absolute
           />
@@ -492,6 +512,118 @@ export default function DashboardScreen() {
           </Animated.View>
         ))}
       </View>
+      
+      <Modal visible={showWeightModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: currentThemeColors.card, width: '80%' }]}>
+            <Text style={[styles.modalHeader, { color: currentThemeColors.text }]}>Log Weight</Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: currentThemeColors.border,
+                backgroundColor: currentThemeColors.surface,
+                color: currentThemeColors.text,
+                padding: 15,
+                borderRadius: 12,
+                fontSize: 18,
+                textAlign: 'center',
+                marginBottom: 20
+              }}
+              placeholder="Weight (lbs)"
+              placeholderTextColor={currentThemeColors.textSecondary}
+              keyboardType="numeric"
+              value={newWeightInput}
+              onChangeText={setNewWeightInput}
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={{ flex: 1, padding: 15, backgroundColor: currentThemeColors.surface, borderRadius: 12, alignItems: 'center' }} onPress={() => setShowWeightModal(false)}>
+                <Text style={{ color: currentThemeColors.text, fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={{ flex: 1, padding: 15, backgroundColor: currentThemeColors.primary, borderRadius: 12, alignItems: 'center' }} 
+                onPress={handleUpdateWeight}
+                disabled={biometricsLoading}
+              >
+                {biometricsLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showHistoryModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: currentThemeColors.card, height: '80%' }]}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.modalHeader, { color: currentThemeColors.text, flex: 1, textAlign: 'left' }]}>Weight History</Text>
+              <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
+                <Ionicons name="close" size={24} color={currentThemeColors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.tabContainer, { backgroundColor: currentThemeColors.surface, marginBottom: 20 }]}>
+              <TouchableOpacity 
+                style={[styles.tabButton, historyTab === 'list' && { backgroundColor: currentThemeColors.card }]} 
+                onPress={() => setHistoryTab('list')}
+              >
+                <Text style={[styles.tabText, { color: historyTab === 'list' ? currentThemeColors.primary : currentThemeColors.textSecondary }]}>List View</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.tabButton, historyTab === 'graph' && { backgroundColor: currentThemeColors.card }]} 
+                onPress={() => setHistoryTab('graph')}
+              >
+                <Text style={[styles.tabText, { color: historyTab === 'graph' ? currentThemeColors.primary : currentThemeColors.textSecondary }]}>Graph View</Text>
+              </TouchableOpacity>
+            </View>
+
+            {historyTab === 'list' ? (
+              <FlatList
+                data={[...biometricHistory].reverse()}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={[styles.historyRow, { borderBottomColor: currentThemeColors.border }]}>
+                    <View>
+                      <Text style={[styles.historyDate, { color: currentThemeColors.text }]}>{item.date}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.historyWeight, { color: currentThemeColors.primary }]}>{item.weight_lbs} lbs</Text>
+                      <Text style={[styles.historyBmi, { color: currentThemeColors.textSecondary }]}>BMI: {item.bmi}</Text>
+                    </View>
+                  </View>
+                )}
+                showsVerticalScrollIndicator={false}
+              />
+            ) : (
+              <View style={{ alignItems: 'center', marginTop: 20 }}>
+                {biometricHistory.length > 1 ? (
+                  <LineChart
+                    data={{
+                      labels: biometricHistory.slice(-7).map(d => d.date),
+                      datasets: [{ data: biometricHistory.slice(-7).map(d => d.weight_lbs) }]
+                    }}
+                    width={screenWidth - 48}
+                    height={220}
+                    chartConfig={{
+                      backgroundColor: currentThemeColors.card,
+                      backgroundGradientFrom: currentThemeColors.card,
+                      backgroundGradientTo: currentThemeColors.card,
+                      decimalPlaces: 1,
+                      color: (opacity = 1) => currentThemeColors.primary,
+                      labelColor: (opacity = 1) => currentThemeColors.textSecondary,
+                      style: { borderRadius: 16 },
+                      propsForDots: { r: "6", strokeWidth: "2", stroke: currentThemeColors.primary }
+                    }}
+                    bezier
+                    style={{ marginVertical: 8, borderRadius: 16 }}
+                  />
+                ) : (
+                  <Text style={{ color: currentThemeColors.textSecondary, marginTop: 40 }}>Not enough data for chart</Text>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -573,21 +705,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     marginRight: 8,
   },
   fastingStatus: {
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: '900',
     letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   fastingContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   timeLabel: {
     fontSize: 14,
@@ -597,31 +729,32 @@ const styles = StyleSheet.create({
   timeValue: {
     fontSize: 32,
     fontWeight: '900',
+    letterSpacing: -1,
   },
   heartRateCard: {
     marginHorizontal: 20,
     marginBottom: 20,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
+    padding: 20,
     borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   heartRateLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   heartRateValue: {
     fontSize: 24,
     fontWeight: '900',
   },
   premiumCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
     borderRadius: 24,
     padding: 24,
-    marginHorizontal: 20,
-    marginBottom: 20,
     borderWidth: 1,
   },
   title: {
@@ -632,23 +765,23 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 12,
+    fontWeight: '900',
+    marginBottom: 16,
+    letterSpacing: -0.5,
   },
   progressHeader: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   carbValue: {
-    fontSize: 44,
+    fontSize: 32,
     fontWeight: '900',
-    letterSpacing: -1,
+    marginRight: 8,
   },
   carbLimit: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    marginLeft: 8,
   },
   progressBarBackground: {
     height: 12,
@@ -673,7 +806,7 @@ const styles = StyleSheet.create({
   },
   waterBtnText: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: 'bold',
   },
   grid: {
     flexDirection: 'row',
@@ -690,9 +823,9 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 10,
-    fontWeight: '800',
-    marginBottom: 8,
-    letterSpacing: 0.5,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   metricValue: {
     fontSize: 22,
@@ -716,8 +849,8 @@ const styles = StyleSheet.create({
   fastingDisabledCard: {
     marginHorizontal: 20,
     marginBottom: 20,
-    padding: 24,
     borderRadius: 20,
+    padding: 20,
     borderWidth: 1,
     borderStyle: 'dashed',
     alignItems: 'center',
@@ -728,8 +861,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   enableLink: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: 'bold',
     textDecorationLine: 'underline',
   },
   calendarCard: {
@@ -802,46 +935,53 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     padding: 24,
-    maxHeight: '80%',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   modalHeader: {
-    fontSize: 20,
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    padding: 4,
+    borderRadius: 12,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  tabText: {
+    fontSize: 14,
     fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
   },
-  modalScroll: {
-    marginBottom: 20,
-  },
-  workoutRow: {
+  historyRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
-  workoutName: {
+  historyDate: {
     fontSize: 16,
     fontWeight: '600',
-    flex: 1,
   },
-  workoutStats: {
-    fontSize: 14,
-    color: '#8E8E93',
+  historyWeight: {
+    fontSize: 18,
+    fontWeight: '900',
   },
-  modalCloseBtn: {
-    backgroundColor: '#FF2D55',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalCloseText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  historyBmi: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
   }
 });

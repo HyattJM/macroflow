@@ -132,6 +132,15 @@ class SavedRecipe(models.Model):
     def __str__(self):
         return self.title
 
+class BiometricLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    weight_lbs = models.FloatField()
+    bmi = models.FloatField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.weight_lbs} lbs (BMI: {self.bmi})"
+
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_user_profile_and_token(sender, instance=None, created=False, **kwargs):
     if created:

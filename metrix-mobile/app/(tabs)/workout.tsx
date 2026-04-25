@@ -4,10 +4,15 @@ import { LineChart } from "react-native-chart-kit";
 import { Swipeable } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
+import { Calendar } from 'react-native-calendars';
 import apiClient from '../../src/api/apiClient';
 import { useAppTheme } from '../../src/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { DailyCanvas } from '../../src/components/workout/DailyCanvas';
+import type { ActiveExerciseEntry, CompletedSet } from '../../src/components/workout/DailyCanvas';
+import { WorkoutCalendarHistory } from '../../src/components/workout/WorkoutCalendarHistory';
+
 
 export const EXERCISE_DATABASE = [
   { category: 'Abs', color: '#5C6BC0', exercises: ['Ab-Wheel Rollout', 'Cable Crunch', 'Crunch', 'Crunch Machine', 'Decline Crunch', 'Dragon Flag', 'Hanging Knee Raise', 'Hanging Leg Raise', 'Plank', 'Side Plank'] },
@@ -26,13 +31,11 @@ export default function WorkoutScreen() {
   
   // Active Exercise State
   const [activeExercise, setActiveExercise] = useState('');
-  const [currentSets, setCurrentSets] = useState([]); 
-  const [weight, setWeight] = useState('');
-  const [reps, setReps] = useState('');
   const [duration, setDuration] = useState('30');
-  const [restTimeLeft, setRestTimeLeft] = useState(0);
-  const [historicalMax, setHistoricalMax] = useState({ weight: 0, reps: 0 });
-  
+
+  // Replaces the single-exercise model with a multi-card session list
+  const [sessionExercises, setSessionExercises] = useState<ActiveExerciseEntry[]>([]);
+
   // History State
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,9 +56,7 @@ export default function WorkoutScreen() {
   // Refinement States
   const [isSelectorVisible, setSelectorVisible] = useState(false);
   const [expandedCats, setExpandedCats] = useState([]);
-  const [isTimerEnabled, setIsTimerEnabled] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [timerMax, setTimerMax] = useState(90);
 
   // Animated States
   const indicatorPosition = useSharedValue(0);
@@ -71,16 +72,6 @@ export default function WorkoutScreen() {
     return {
       left: `${indicatorPosition.value * 33.33}%`
     };
-  });
-
-  useEffect(() => {
-    if (timerMax > 0) {
-      timerWidth.value = withSpring(Math.min(100, Math.max(0, (restTimeLeft / timerMax) * 100)));
-    }
-  }, [restTimeLeft, timerMax]);
-
-  const animatedTimerStyle = useAnimatedStyle(() => {
-    return { width: `${timerWidth.value}%` };
   });
 
   const filteredExerciseDatabase = useMemo(() => {
@@ -102,18 +93,6 @@ export default function WorkoutScreen() {
   const toggleCat = (cat) => {
     setExpandedCats(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
   };
-
-  useEffect(() => {
-    let interval = null;
-    if (restTimeLeft > 0) {
-      interval = setInterval(() => {
-        setRestTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [restTimeLeft]);
 
   const fetchHistoricalMax = async (name) => {
     if (!name.trim()) return;
@@ -176,77 +155,7 @@ export default function WorkoutScreen() {
     }
   };
 
-  const handleLogSet = () => {
-    if (!weight || !reps) {
-       Toast.show({ type: 'error', text1: 'Missing Info', text2: 'Please enter both weight and reps.' });
-       return;
-    }
-    
-    const weightVal = parseFloat(weight);
-    const repsVal = parseInt(reps, 10);
-    const isPR = weightVal > historicalMax.weight || (weightVal === historicalMax.weight && repsVal > historicalMax.reps);
-    
-    const newSet = {
-      weight: weightVal,
-      reps: repsVal,
-      is_pr: isPR
-    };
-    
-    setCurrentSets([...currentSets, newSet]);
-    
-    // Instant update of historicalMax for subsequent sets in this session and trigger haptics
-    if (isPR) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      setHistoricalMax({ weight: weightVal, reps: repsVal });
-    } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    setReps(''); // Clear reps, usually weight stays
-    if (isTimerEnabled) {
-      setTimerMax(90);
-      setRestTimeLeft(90); // Start 90s rest timer
-    }
-  };
-
-  const removeSet = (index) => {
-    setCurrentSets(currentSets.filter((_, i) => i !== index));
-  };
-
-  const handleFinishExercise = async () => {
-    if (!activeExercise || !activeExercise.trim()) {
-      Toast.show({ type: 'error', text1: 'Exercise Name', text2: 'Please select an exercise.' });
-      return;
-    }
-    if (currentSets.length === 0) {
-      Toast.show({ type: 'error', text1: 'No Sets', text2: 'Add at least one set before finishing.' });
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const payload = {
-        exercise_name: activeExercise,
-        duration: parseInt(duration, 10),
-        sets_list: currentSets
-      };
-      
-      const response = await apiClient.post('/log-workout/', payload);
-      if (response.data.status === 'success') {
-        setActiveExercise('');
-        setCurrentSets([]);
-        setWeight('');
-        setReps('');
-        fetchWorkouts();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Toast.show({ type: 'success', text1: 'Success', text2: 'Exercise session logged!' });
-      }
-    } catch (error) {
-      console.error("Logging Error:", error);
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to log workout.' });
-    } finally {
-      setSubmitting(false);
-    }
-  };
+ 
 
   const handleDelete = (id) => {
     Alert.alert("Delete Workout", "Are you sure?", [
@@ -291,13 +200,12 @@ export default function WorkoutScreen() {
     }
   };
 
-  const totalVolume = currentSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
 
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
+  // const formatTime = (seconds) => {
+  //   const m = Math.floor(seconds / 60);
+  //   const s = seconds % 60;
+  //   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  // };
 
   const renderHistoryItem = (item) => {
     const date = new Date(item.created_at);
@@ -352,6 +260,9 @@ export default function WorkoutScreen() {
     return maxItem;
   }, [historyData]);
 
+  // ── Stable lookup tables built from EXERCISE_DATABASE ───────────────────────
+  // (Now live inside WorkoutCalendarHistory — removed from here)
+
   return (
     <KeyboardAvoidingView 
       style={[styles.container, { backgroundColor: currentThemeColors.background }]} 
@@ -383,240 +294,92 @@ export default function WorkoutScreen() {
       </View>
 
       {activeTab === 'track' && (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={[styles.title, { color: currentThemeColors.text, paddingHorizontal: 20, marginTop: 20 }]}>Active Exercise</Text>
-          
-          <View style={[styles.activeSection, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, shadowColor: currentThemeColors.primary, shadowOpacity: 0.15 }]}>
-            <View style={styles.headerRow}>
-              <TouchableOpacity 
-                style={[styles.exerciseSelectorTrigger, { backgroundColor: currentThemeColors.surface, borderColor: currentThemeColors.border }]} 
-                onPress={() => setSelectorVisible(true)}
-              >
-                <Text style={[styles.exerciseSelectorText, { color: activeExercise ? currentThemeColors.text : currentThemeColors.textSecondary }]}>
-                  {activeExercise || 'Select Exercise'}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color={currentThemeColors.primary} />
-              </TouchableOpacity>
-              <View style={[styles.volumeBadge, { backgroundColor: currentThemeColors.primary + '15' }]}>
-                <Text style={[styles.volumeLabel, { color: currentThemeColors.primary }]}>VOLUME</Text>
-                <Text style={[styles.volumeValue, { color: currentThemeColors.text }]}>{totalVolume.toLocaleString()} <Text style={{ fontSize: 10 }}>LBS</Text></Text>
-              </View>
-            </View>
-
-            <View style={styles.gridHeader}>
-              <Text style={[styles.gridHeaderText, { flex: 0.5, textAlign: 'center' }]}>SET</Text>
-              <Text style={[styles.gridHeaderText, { flex: 1 }]}>WEIGHT (LBS)</Text>
-              <Text style={[styles.gridHeaderText, { flex: 1 }]}>REPS</Text>
-              <View style={{ width: 40 }} />
-            </View>
-
-            {currentSets.map((s, index) => (
-              <Swipeable key={index} renderRightActions={() => (
-                <TouchableOpacity onPress={() => removeSet(index)} style={styles.deleteSwipeBtn}>
-                  <Ionicons name="trash" size={24} color="#fff" />
-                </TouchableOpacity>
-              )}>
-                <View style={styles.setRow}>
-                  <Text style={[styles.setText, { flex: 0.5, textAlign: 'center', color: dark ? '#aaa' : '#666' }]}>{index + 1}</Text>
-                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.setText, { color: currentThemeColors.text, fontWeight: 'bold' }]}>{s.weight}</Text>
-                    <Text style={styles.setSubText}>lbs</Text>
-                  </View>
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                  <Text style={[styles.setText, { flex: 1, color: currentThemeColors.text, fontWeight: 'bold' }]}>{s.reps}</Text>
-                  <View style={{ width: 40 }} />
-                </View>
-              </View>
-            </Swipeable>
-            ))}
-
-            <View style={[styles.inputRow, { borderTopWidth: 1, borderTopColor: currentThemeColors.border, paddingTop: 15 }]}>
-               <View style={{ flex: 0.3, alignItems: 'center' }}>
-                  <Text style={{ color: currentThemeColors.primary, fontWeight: '900', fontSize: 18 }}>{currentSets.length + 1}</Text>
-               </View>
-               
-               <View style={{ flex: 1.2, flexDirection: 'row', alignItems: 'center', backgroundColor: currentThemeColors.surface, borderRadius: 10, marginHorizontal: 5 }}>
-                 <TouchableOpacity onPress={() => { setWeight(prev => String(Math.max(0, (parseFloat(prev) || 0) - 5))); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.stepperBtn}>
-                   <Ionicons name="remove" size={18} color={currentThemeColors.textSecondary} />
-                 </TouchableOpacity>
-                 <TextInput
-                   style={[styles.gridInput, { flex: 1, color: currentThemeColors.text, marginHorizontal: 0, backgroundColor: 'transparent' }]}
-                   placeholder="LBS"
-                   placeholderTextColor={currentThemeColors.textSecondary}
-                   keyboardType="numeric"
-                   value={weight}
-                   onChangeText={setWeight}
-                   keyboardAppearance='dark'
-                 />
-                 <TouchableOpacity onPress={() => { setWeight(prev => String((parseFloat(prev) || 0) + 5)); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.stepperBtn}>
-                   <Ionicons name="add" size={18} color={currentThemeColors.textSecondary} />
-                 </TouchableOpacity>
-               </View>
-
-               <View style={{ flex: 1.2, flexDirection: 'row', alignItems: 'center', backgroundColor: currentThemeColors.surface, borderRadius: 10, marginHorizontal: 5 }}>
-                 <TouchableOpacity onPress={() => { setReps(prev => String(Math.max(0, (parseInt(prev) || 0) - 1))); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.stepperBtn}>
-                   <Ionicons name="remove" size={18} color={currentThemeColors.textSecondary} />
-                 </TouchableOpacity>
-                 <TextInput
-                   style={[styles.gridInput, { flex: 1, color: currentThemeColors.text, marginHorizontal: 0, backgroundColor: 'transparent' }]}
-                   placeholder="REPS"
-                   placeholderTextColor={currentThemeColors.textSecondary}
-                   keyboardType="numeric"
-                   value={reps}
-                   onChangeText={setReps}
-                   keyboardAppearance='dark'
-                 />
-                 <TouchableOpacity onPress={() => { setReps(prev => String((parseInt(prev) || 0) + 1)); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.stepperBtn}>
-                   <Ionicons name="add" size={18} color={currentThemeColors.textSecondary} />
-                 </TouchableOpacity>
-               </View>
-
-               <TouchableOpacity style={[styles.addSetBtn, { backgroundColor: currentThemeColors.primary }]} onPress={handleLogSet}>
-                 <Text style={styles.addSetBtnText}>LOG</Text>
-               </TouchableOpacity>
-            </View>
-          </View>
-                    {/* Auto-Rest Timer */}
-          {restTimeLeft > 0 && (
-            <View style={[styles.timerCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.primary, shadowColor: currentThemeColors.primary, shadowOpacity: 0.15 }]}>
-              <View style={styles.timerHeader}>
-                <Ionicons name="hourglass-outline" size={20} color={currentThemeColors.primary} />
-                <Text style={[styles.timerLabel, { color: currentThemeColors.primary }]}>RESTING</Text>
-              </View>
-              <Text style={[styles.timerValue, { color: currentThemeColors.text }]}>{formatTime(restTimeLeft)}</Text>
-              
-              <View style={[styles.timerBarBg, { backgroundColor: currentThemeColors.surface }]}>
-                <Animated.View style={[styles.timerBarFill, { backgroundColor: currentThemeColors.primary, shadowColor: currentThemeColors.primary, shadowOpacity: 0.8, shadowRadius: 8, elevation: 4 }, animatedTimerStyle]} />
-              </View>
-
-              <View style={styles.timerActions}>
-                <TouchableOpacity onPress={() => { setRestTimeLeft(prev => prev + 30); setTimerMax(prev => prev + 30); }} style={[styles.timerBtn, { backgroundColor: currentThemeColors.surface }]}>
-                  <Text style={[styles.timerBtnText, { color: currentThemeColors.text }]}>+30s</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setRestTimeLeft(prev => Math.max(0, prev - 30))} style={[styles.timerBtn, { backgroundColor: currentThemeColors.surface }]}>
-                  <Text style={[styles.timerBtnText, { color: currentThemeColors.text }]}>-30s</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setRestTimeLeft(0)} style={[styles.timerBtn, { backgroundColor: currentThemeColors.error }]}>
-                  <Text style={[styles.timerBtnText, { color: '#fff' }]}>Skip</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.timerToggleRow}>
-                <Text style={{ color: currentThemeColors.textSecondary, fontSize: 12, fontWeight: '600' }}>Auto-Rest Timer</Text>
-                <Switch 
-                  value={isTimerEnabled} 
-                  onValueChange={setIsTimerEnabled}
-                  trackColor={{ false: currentThemeColors.surface, true: currentThemeColors.primary }}
-                  thumbColor="#f4f3f4"
-                />
-              </View>
-            </View>
-          )}
-
-          {currentSets.length > 0 && (
-            <View style={[styles.finishSection, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.md }]}>
-              <View style={styles.durationRow}>
-                <Text style={{ color: currentThemeColors.textSecondary, fontSize: 14, fontWeight: '600' }}>Session Duration (min)</Text>
-                <TextInput
-                  style={[styles.durationInput, { color: currentThemeColors.text, backgroundColor: currentThemeColors.surface }]}
-                  keyboardType="numeric"
-                  value={duration}
-                  onChangeText={setDuration}
-                  keyboardAppearance='dark'
-                />
-              </View>
-              <TouchableOpacity style={[styles.finishBtn, { backgroundColor: currentThemeColors.success }]} onPress={handleFinishExercise} disabled={submitting}>
-                <Text style={styles.finishBtnText}>{submitting ? 'LOGGING...' : 'FINISH EXERCISE'}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-        </ScrollView>
+        <DailyCanvas
+          activeExercises={sessionExercises}
+          onOpenExerciseSelector={() => setSelectorVisible(true)}
+          onSaveExercise={async (id, sets) => {
+            const entry = sessionExercises.find(e => e.id === id);
+            if (!entry || sets.length === 0) return;
+            setSubmitting(true);
+            try {
+              const payload = {
+                exercise_name: entry.exercise.name,
+                duration: parseInt(duration, 10),
+                sets_list: sets,
+              };
+              const response = await apiClient.post('/log-workout/', payload);
+              if (response.data.status === 'success') {
+                fetchWorkouts();
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Toast.show({ type: 'success', text1: '✅ Logged!', text2: `${entry.exercise.name} saved.` });
+                // Remove saved card from canvas
+                setSessionExercises(prev => prev.filter(e => e.id !== id));
+              }
+            } catch (error) {
+              Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to log workout.' });
+            } finally {
+              setSubmitting(false);
+            }
+          }}
+        />
       )}
 
-      {activeTab === 'history' && (() => {
-        if (!activeExercise) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}><Text style={{ color: currentThemeColors.text, fontSize: 16 }}>So much empty... Select an exercise above!</Text></View>;
-        return (
-          <SectionList
-            sections={historyData}
-            keyExtractor={(item, idx) => item.id?.toString() || idx.toString()}
-            stickySectionHeadersEnabled={true}
-            onRefresh={fetchHistory}
-            refreshing={loading}
-            renderSectionHeader={({ section: { title } }) => (
-              <View style={[styles.historyHeader, { backgroundColor: currentThemeColors.background, borderBottomColor: currentThemeColors.border }]}>
-                <Text style={[styles.historyHeaderText, { color: currentThemeColors.primary }]}>{title}</Text>
-              </View>
-            )}
-            renderItem={({ item }) => (
-              <View style={[styles.historyItem, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, shadowColor: currentThemeColors.primary, shadowOpacity: 0.15 }]}>
-                <View style={styles.historyTopRow}>
-                  <Text style={[styles.historyName, { color: currentThemeColors.text }]}>{item.exercise_name}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.historyStats, { color: currentThemeColors.primary }]}>{item.sets} Sets / {item.reps} Reps / {item.weight} lbs</Text>
-                    {allTimePR?.id === item.id && <Ionicons name="trophy" size={16} color="#FFD700" style={{ marginLeft: 6 }} />}
-                  </View>
-                </View>
-              </View>
-            )}
-            contentContainerStyle={{ padding: 15 }}
-          />
-        );
-      })()}
+      {/* ── HISTORY TAB ── */}
+      {activeTab === 'history' && (
+        <WorkoutCalendarHistory workouts={workouts} />
+      )}
 
+      {/* ── GRAPH TAB ── */}
       {activeTab === 'graph' && (() => {
-        if (!activeExercise) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}><Text style={{ color: currentThemeColors.text, fontSize: 16 }}>So much empty... Select an exercise above!</Text></View>;
+        if (!activeExercise) return (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}>
+            <Text style={{ color: currentThemeColors.text, fontSize: 16 }}>Select an exercise above to see your progress.</Text>
+          </View>
+        );
         return (
           <ScrollView contentContainerStyle={{ padding: 15 }}>
             <Text style={[styles.title, { color: currentThemeColors.text }]}>Progress Analysis</Text>
-            <View style={[styles.activeGraphHeader, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
-               <Text style={[styles.activeGraphExName, { color: currentThemeColors.primary }]}>{activeExercise}</Text>
-               <Text style={{ color: currentThemeColors.textSecondary, fontSize: 12 }}>All-Time PR: {historicalMax.weight} lbs x {historicalMax.reps}</Text>
-               {graphLoading && <ActivityIndicator size="small" color={currentThemeColors.primary} style={{ marginTop: 10 }} />}
+            <View style={[styles.activeGraphHeader, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border }]}>
+              <Text style={[styles.activeGraphExName, { color: currentThemeColors.primary }]}>{activeExercise}</Text>
+              {graphLoading && <ActivityIndicator size="small" color={currentThemeColors.primary} style={{ marginTop: 10 }} />}
             </View>
-
             {graphData.length > 1 ? (
-               <View style={styles.chartWrapper}>
-                 <LineChart
-                   data={{
-                     labels: graphData.map(d => d.date),
-                     datasets: [{ data: graphData.map(d => d.weight) }]
-                   }}
-                   width={Dimensions.get("window").width - 30}
-                   height={220}
-                   chartConfig={{
-                     backgroundColor: currentThemeColors.card,
-                     backgroundGradientFrom: currentThemeColors.card,
-                     backgroundGradientTo: currentThemeColors.card,
-                     decimalPlaces: 0,
-                     color: (opacity = 1) => currentThemeColors.primary,
-                     labelColor: (opacity = 1) => currentThemeColors.textSecondary,
-                     propsForDots: {
-                       r: "6",
-                       strokeWidth: "2",
-                       stroke: currentThemeColors.primary
-                     }
-                   }}
-                   bezier
-                   style={{
-                     marginVertical: 8,
-                     borderRadius: 16
-                   }}
-                 />
-                 <Text style={[styles.chartStatus, { color: currentThemeColors.textSecondary }]}>Progression of Max Weight (lbs)</Text>
-               </View>
+              <View style={styles.chartWrapper}>
+                <LineChart
+                  data={{
+                    labels: graphData.map((d: any) => d.date),
+                    datasets: [{ data: graphData.map((d: any) => d.weight) }]
+                  }}
+                  width={Dimensions.get('window').width - 30}
+                  height={220}
+                  chartConfig={{
+                    backgroundColor: currentThemeColors.card,
+                    backgroundGradientFrom: currentThemeColors.card,
+                    backgroundGradientTo: currentThemeColors.card,
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => currentThemeColors.primary,
+                    labelColor: (opacity = 1) => currentThemeColors.textSecondary,
+                    propsForDots: { r: '6', strokeWidth: '2', stroke: currentThemeColors.primary }
+                  }}
+                  bezier
+                  style={{ marginVertical: 8, borderRadius: 16 }}
+                />
+                <Text style={[styles.chartStatus, { color: currentThemeColors.textSecondary }]}>Progression of Max Weight (lbs)</Text>
+              </View>
             ) : (
-              <View style={[styles.emptyChart, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
+              <View style={[styles.emptyChart, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border }]}>
                 <Ionicons name="analytics-outline" size={48} color={currentThemeColors.surface} />
                 <Text style={{ color: currentThemeColors.textSecondary, marginTop: 10, textAlign: 'center' }}>
-                  {graphData.length === 1 
-                    ? 'Need at least 2 sessions to graph progress' 
-                    : (activeExercise ? `No history for ${activeExercise} yet. Log more sessions!` : 'Select an exercise to see your progress')}
+                  {graphData.length === 1
+                    ? 'Need at least 2 sessions to graph progress'
+                    : `No history for ${activeExercise} yet. Log more sessions!`}
                 </Text>
               </View>
             )}
           </ScrollView>
         );
       })()}
+      
 
       <Modal visible={isEditModalVisible} animationType="slide" transparent={true} onRequestClose={() => setEditModalVisible(false)}>
         <View style={styles.modalOverlay}>
@@ -714,7 +477,24 @@ export default function WorkoutScreen() {
                 if (!isExpanded) return null;
                 return (
                   <TouchableOpacity 
-                        onPress={() => { setActiveExercise(item); setSelectorVisible(false); setSearchQuery(''); }}
+                        onPress={() => {
+                          // Keep activeExercise in sync for History/Graph tabs
+                          setActiveExercise(item);
+                          setSelectorVisible(false);
+                          setSearchQuery('');
+                          // Add to the canvas if not already present
+                          setSessionExercises(prev => {
+                            if (prev.find(e => e.exercise.name === item)) return prev;
+                            const newEntry: ActiveExerciseEntry = {
+                              id: `${item}-${Date.now()}`,
+                              exercise: {
+                                name: item,
+                                category: section.title,
+                              },
+                            };
+                            return [...prev, newEntry];
+                          });
+                        }}
                         style={[styles.exItem, { borderBottomColor: currentThemeColors.border }]} 
                   >
                     <View style={styles.exItemInner}>
@@ -1103,6 +883,98 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     fontSize: 16,
+  },
+  // History card sub-styles used by renderHistoryItem
+  categoryText: {
+    fontSize: 12,
+    color: '#565F89',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  cardBody: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  macroStat: {
+    alignItems: 'center',
+  },
+  // Calendar / History tab
+  calendarWrapper: {
+    borderRadius: 16,
+    borderWidth: 1,
+    marginHorizontal: 14,
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  historyListContent: {
+    paddingTop: 14,
+    paddingBottom: 30,
+  },
+  emptyLogWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 48,
+    gap: 12,
+  },
+  emptyLogText: {
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  // FitNotes-style set list
+  setListHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  setListHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  setListCategoryDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    flexShrink: 0,
+  },
+  setListExerciseName: {
+    fontSize: 16,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  setListRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 9,
+    borderTopWidth: 0,
+  },
+  setListSetNum: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    width: 46,
+  },
+  setListStat: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 3,
+  },
+  setListStatValue: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  setListStatLabel: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,

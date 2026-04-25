@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.db.models import Sum, Max
 from django.db.models.functions import TruncDate
-from .models import User, UserProfile, BodyWeight, MuscleGroup, Exercise, WorkoutSession, ExerciseSet, FoodItem, FoodLog, WaterLog, NutritionLog, WorkoutLog, SavedRecipe
+from .models import User, UserProfile, BodyWeight, MuscleGroup, Exercise, WorkoutSession, ExerciseSet, FoodItem, FoodLog, WaterLog, NutritionLog, WorkoutLog, SavedRecipe, BiometricLog
 from .serializers import (UserSerializer, BodyWeightSerializer, MuscleGroupSerializer, 
                           ExerciseSerializer, WorkoutSessionSerializer, ExerciseSetSerializer, 
                           FoodItemSerializer, FoodLogSerializer, WaterLogSerializer, NutritionLogSerializer, WorkoutLogSerializer, SavedRecipeSerializer)
@@ -711,3 +711,33 @@ def get_workout_history(request):
         
         sections = [{'title': k, 'data': v} for k, v in grouped.items()]
         return Response(sections)
+
+@api_view(['POST', 'GET'])
+@permission_classes([IsAuthenticated])
+def biometrics_view(request):
+    if request.method == 'POST':
+        try:
+            weight_lbs = float(request.data.get('weight_lbs', 0))
+            bmi = float(request.data.get('bmi', 0))
+            
+            if weight_lbs <= 0 or bmi <= 0:
+                return Response({"error": "Invalid metrics"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            new_log = BiometricLog.objects.create(
+                user=request.user,
+                weight_lbs=weight_lbs,
+                bmi=bmi
+            )
+            return Response({"status": "success", "id": new_log.id})
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
+    elif request.method == 'GET':
+        logs = BiometricLog.objects.filter(user=request.user).order_by('created_at')
+        data = [{
+            'id': log.id,
+            'weight_lbs': log.weight_lbs,
+            'bmi': log.bmi,
+            'date': log.created_at.strftime('%m/%d')
+        } for log in logs]
+        return Response({"status": "success", "data": data})

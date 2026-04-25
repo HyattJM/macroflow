@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, TextInput, KeyboardAvoidingView, Platform, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, TextInput, KeyboardAvoidingView, Platform, ScrollView, Modal, Dimensions, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useEffect } from 'react';
@@ -9,6 +9,8 @@ import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppTheme } from '../../src/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Animated, { useSharedValue, withRepeat, withTiming, useAnimatedStyle, withSequence } from 'react-native-reanimated';
 
 interface KetoScannerProps {
   user?: {
@@ -31,6 +33,27 @@ export default function KetoScanner({ user }: KetoScannerProps) {
   const [scanned, setScanned] = useState(false); // To disable multi-scans
   const [aiTokens, setAiTokens] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Reticle pulse animation
+  const pulseScale = useSharedValue(1);
+  useEffect(() => {
+    if (mode === 'barcode' && !scanned) {
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 1000 }),
+          withTiming(1, { duration: 1000 })
+        ),
+        -1,
+        true
+      );
+    } else {
+      pulseScale.value = 1;
+    }
+  }, [mode, scanned]);
+
+  const animatedReticleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }]
+  }));
 
   useFocusEffect(
     useCallback(() => {
@@ -136,6 +159,8 @@ export default function KetoScanner({ user }: KetoScannerProps) {
   const handleBarCodeScanned = async ({ type, data }) => {
     if (scanned) return;
     setScanned(true);
+    // Tactile confirmation the moment the barcode locks on
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
     try {
       const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${data}.json`);
@@ -218,46 +243,80 @@ export default function KetoScanner({ user }: KetoScannerProps) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{flexGrow: 1}}>
-        {photo && mode === 'vision' ? (
-          <View style={[styles.previewContainer, { backgroundColor: currentThemeColors.background }]}>
-            {mode === 'vision' && (
-              <View style={[styles.tokenBadge, { backgroundColor: currentThemeColors.card + 'CC' }]}>
-                <Text style={[styles.tokenText, { color: currentThemeColors.text }]}>Free AI Scans: {aiTokens}</Text>
-              </View>
-            )}
-            <Image source={{ uri: photo.uri }} style={styles.preview} />
-            
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: currentThemeColors.text }]}>Modifiers (e.g. 'McDonalds, no bun'):</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: currentThemeColors.surface, color: currentThemeColors.text, borderColor: currentThemeColors.border }]}
-                placeholder="What did you change?"
-                placeholderTextColor={currentThemeColors.textSecondary}
-                value={modifier}
-                onChangeText={setModifier}
-                keyboardAppearance={isDark ? 'dark' : 'light'}
-              />
-            </View>
+      {/* ── BARCODE MODE: full-screen camera, no ScrollView ── */}
+      {!photo && mode === 'barcode' && (
+        <View style={styles.cameraContainer}>
+          <CameraView
+            style={styles.camera}
+            ref={cameraRef}
+            barcodeScannerSettings={{ barcodeTypes: ['qr', 'ean13', 'ean8', 'upc_a', 'upc_e'] }}
+            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+          />
 
-            <View style={styles.actionButtons}>
-              <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: currentThemeColors.surface }]} onPress={() => setPhoto(null)}>
-                <Text style={[styles.buttonTextBlack, { color: currentThemeColors.text }]}>Retake</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.primaryButton, { backgroundColor: currentThemeColors.primary }]} onPress={handleScan} disabled={loading}>
-                <Text style={styles.buttonText}>{loading ? 'Analyzing...' : 'Analyze Meal'}</Text>
-              </TouchableOpacity>
+          {/* Centered corner-bracket reticle — no scrim panels */}
+          {!scanned && (
+            <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+              <Animated.View style={[styles.reticleWrapper, animatedReticleStyle]}>
+                <View style={styles.reticleBox}>
+                  <View style={[styles.corner, styles.cornerTL, { borderColor: currentThemeColors.primary }]} />
+                  <View style={[styles.corner, styles.cornerTR, { borderColor: currentThemeColors.primary }]} />
+                  <View style={[styles.corner, styles.cornerBL, { borderColor: currentThemeColors.primary }]} />
+                  <View style={[styles.corner, styles.cornerBR, { borderColor: currentThemeColors.primary }]} />
+                </View>
+                <Text style={[styles.reticleHint, { color: 'rgba(255,255,255,0.75)' }]}>
+                  Align barcode within frame
+                </Text>
+              </Animated.View>
             </View>
-          </View>
-        ) : (
-          <View style={styles.cameraContainer}>
-            <CameraView 
-              style={styles.camera} 
-              ref={cameraRef}
-              barcodeScannerSettings={mode === 'barcode' ? { barcodeTypes: ['qr', 'ean13', 'ean8', 'upc_a', 'upc_e'] } : undefined}
-              onBarcodeScanned={scanned || mode !== 'barcode' ? undefined : handleBarCodeScanned}
-            />
-            {mode === 'vision' && (
+          )}
+
+          {/* Post-scan overlay */}
+          {scanned && (
+            <View style={styles.lookingUpOverlay}>
+              <ActivityIndicator size="large" color={currentThemeColors.primary} />
+              <Text style={[styles.lookingUpText, { color: '#fff' }]}>Looking up product…</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* ── VISION MODE (and photo preview): uses ScrollView ── */}
+      {(mode === 'vision' || photo) && (
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          {photo && mode === 'vision' ? (
+            <View style={[styles.previewContainer, { backgroundColor: currentThemeColors.background }]}>
+              {mode === 'vision' && (
+                <View style={[styles.tokenBadge, { backgroundColor: currentThemeColors.card + 'CC' }]}>
+                  <Text style={[styles.tokenText, { color: currentThemeColors.text }]}>Free AI Scans: {aiTokens}</Text>
+                </View>
+              )}
+              <Image source={{ uri: photo.uri }} style={styles.preview} />
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: currentThemeColors.text }]}>Modifiers (e.g. 'McDonalds, no bun'):</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: currentThemeColors.surface, color: currentThemeColors.text, borderColor: currentThemeColors.border }]}
+                  placeholder="What did you change?"
+                  placeholderTextColor={currentThemeColors.textSecondary}
+                  value={modifier}
+                  onChangeText={setModifier}
+                  keyboardAppearance={isDark ? 'dark' : 'light'}
+                />
+              </View>
+              <View style={styles.actionButtons}>
+                <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: currentThemeColors.surface }]} onPress={() => setPhoto(null)}>
+                  <Text style={[styles.buttonTextBlack, { color: currentThemeColors.text }]}>Retake</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.primaryButton, { backgroundColor: currentThemeColors.primary }]} onPress={handleScan} disabled={loading}>
+                  <Text style={styles.buttonText}>{loading ? 'Analyzing...' : 'Analyze Meal'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.cameraContainer}>
+              <CameraView
+                style={styles.camera}
+                ref={cameraRef}
+              />
               <View style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 10 }}>
                 <View style={styles.tokenBadge}>
                   <Text style={styles.tokenText}>Free AI Scans: {aiTokens}</Text>
@@ -268,15 +327,10 @@ export default function KetoScanner({ user }: KetoScannerProps) {
                   </TouchableOpacity>
                 </View>
               </View>
-            )}
-            {mode === 'barcode' && scanned && (
-              <View style={styles.loadingOverlay}>
-                <Text style={styles.loadingText}>Looking up product...</Text>
-              </View>
-            )}
-          </View>
-        )}
-      </ScrollView>
+            </View>
+          )}
+        </ScrollView>
+      )}
 
       {/* Premium Upgrade Modal */}
       <Modal visible={showUpgradeModal} animationType="slide" transparent={true}>
@@ -335,9 +389,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   cameraContainer: {
-    flex: 1,
+    flex: 1,           // fills all remaining height below the toggle bar
     position: 'relative',
-    aspectRatio: 3/4,
   },
   camera: {
     flex: 1,
@@ -498,5 +551,74 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-  }
+  },
+
+  // ── Barcode reticle: simple centered corner brackets ───────────────────────
+  // No scrim panels — just brackets floating over the live feed, same as
+  // Walmart / Expo Go scanners.
+  reticleWrapper: {
+    flex: 1,
+    justifyContent: 'center',   // vertical center
+    alignItems: 'center',       // horizontal center
+    gap: 24,
+  },
+  reticleBox: {
+    width: 260,
+    height: 160,
+    position: 'relative',
+  },
+  reticleHint: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+
+  // Shared corner bracket base
+  corner: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderWidth: 4,
+    borderRadius: 4,
+  },
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+  },
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderLeftWidth: 0,
+    borderBottomWidth: 0,
+  },
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+  },
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+  },
+
+  // Post-scan "looking up" overlay (replaces old loadingOverlay for barcode mode)
+  lookingUpOverlay: {
+    position: 'absolute',
+    top: 0, bottom: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(26,27,38,0.92)',   // Tokyo Night bg tint
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    zIndex: 30,
+  },
+  lookingUpText: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
 });

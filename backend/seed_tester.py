@@ -1,81 +1,71 @@
 import os
+import csv
 import django
-from datetime import timedelta
-from django.utils import timezone
+from datetime import datetime, timezone as dt_timezone
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 django.setup()
 
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
-from macroflow_api.models import UserProfile, WorkoutLog, NutritionLog
+from macroflow_api.models import UserProfile, WorkoutLog
 
 User = get_user_model()
 
 def seed_data():
-    # 1. Clean slate for test
     User.objects.filter(username='test').delete()
     
-    # 2. Create User and Token
     user = User(username='test')
     user.set_password('testpass')
     user.save()
     
     Token.objects.get_or_create(user=user)
     
-    # 3. Update User Profile
     UserProfile.objects.filter(user=user).update(
-        age=25, gender='male', weight_lbs=180, height_inches=70,
+        age=26, gender='male', weight_lbs=190, height_inches=72,
         activity_level='moderately_active', goal='lose',
-        daily_calories_goal=2000, daily_protein_goal=150,
-        daily_fat_goal=140, daily_net_carbs_goal=30, ai_tokens=100
+        daily_calories_goal=2200, daily_protein_goal=160,
+        daily_fat_goal=150, daily_net_carbs_goal=50, ai_tokens=100
     )
     
-    print("Tester account created. Injecting 14 days of data...")
+    csv_file = 'FitNotes_Export_2026_04_25_05_03_34.csv'
     
-    now = timezone.now()
+    if not os.path.exists(csv_file):
+        print(f"\n[ERROR] Could not find {csv_file}\n")
+        return
+
+    print("Parsing ALL individual sets from FitNotes...")
+
+    total_logs = 0
     
-    # 4. Inject 14 Days of Progressive Workouts & Meals
-    for i in range(14, -1, -1):
-        target_date = now - timedelta(days=i)
-        
-        # Progressive Overload Math (Weights go up over time)
-        bench_weight = 185 + ((14 - i) * 5)  # 185 -> 255
-        squat_weight = 225 + ((14 - i) * 5)  # 225 -> 295
-        curl_weight = 30 + ((14 - i) * 2.5)  # 30 -> 65
-        
-        # Workouts
-        workouts = [
-            ("Flat Barbell Bench Press", bench_weight, 5, 5),
-            ("Back Squat", squat_weight, 3, 8),
-            ("Dumbbell Curl", curl_weight, 4, 10)
-        ]
-        
-        for name, weight, sets, reps in workouts:
+    with open(csv_file, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            date_str = row['Date'].strip()
+            exercise = row['Exercise'].strip()
+            
+            try:
+                weight = float(row['Weight'])
+                reps = int(row['Reps'])
+            except (ValueError, TypeError):
+                continue
+                
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').replace(hour=12, minute=0, tzinfo=dt_timezone.utc)
+            
             log = WorkoutLog.objects.create(
-                user=user, exercise_name=name, weight=weight, 
-                sets=sets, reps=reps, duration_minutes=15, burned_calories=120
+                user=user, 
+                exercise_name=exercise, 
+                weight=weight, 
+                sets=1, # FitNotes logs 1 row per set
+                reps=reps, 
+                duration_minutes=0, 
+                burned_calories=0 
             )
-            # Override auto_now_add
             log.created_at = target_date
             log.save()
-            
-        # Keto Meals (hitting ~2000 cals, low carb)
-        meals = [
-            ("3 Eggs & Bacon", 450, 25, 2, 35),
-            ("Ribeye Steak & Butter", 850, 65, 0, 60),
-            ("Chicken Thighs & Avocado", 600, 50, 6, 40)
-        ]
-        
-        for food_name, cals, pro, carbs, fat in meals:
-            nlog = NutritionLog.objects.create(
-                user=user, food_name=food_name, calories=cals, 
-                protein=pro, carbs=carbs, fat=fat
-            )
-            nlog.created_at = target_date
-            nlog.save()
-            
-    print("Success! Database seeded.")
+            total_logs += 1
+
+    print(f"Success! Crushed it. Processed {total_logs} INDIVIDUAL SETS into your history.")
 
 if __name__ == '__main__':
     seed_data()
