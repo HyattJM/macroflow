@@ -52,6 +52,7 @@ class MuscleGroup(models.Model):
 class Exercise(models.Model):
     muscle_group = models.ForeignKey(MuscleGroup, on_delete=models.CASCADE, related_name='exercises')
     name = models.CharField(max_length=200) # e.g., 'Bench Press'
+    gif_url = models.URLField(max_length=500, null=True, blank=True) # <-- Paste this right here!
 
     def __str__(self):
         return self.name

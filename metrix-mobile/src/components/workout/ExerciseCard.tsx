@@ -7,6 +7,7 @@ import {
   FlatList,
   StyleSheet,
   ListRenderItemInfo,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -24,6 +25,7 @@ export interface CompletedSet {
 export interface Exercise {
   name: string;
   category?: string;
+  gif_url?: string;
 }
 
 export interface ExerciseCardProps {
@@ -162,6 +164,7 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
   // Current-session set stack (shown below the inputs)
   const [sets, setSets] = useState<CompletedSet[]>(history);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
 
   // ── Dynamic PR detection ─────────────────────────────────────────────────────
   // Walk the set stack in order. The FIRST set that strictly beats the running
@@ -257,6 +260,22 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
           <Text style={[styles.cardTitle, { color: currentThemeColors.text }]} numberOfLines={1}>
             {exercise.name}
           </Text>
+          {exercise.gif_url && (
+            <TouchableOpacity 
+              style={styles.demoBtn} 
+              onPress={() => {
+                setShowDemo(!showDemo);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              accessibilityLabel="Show form guide"
+            >
+              <Ionicons 
+                name={showDemo ? "eye-off-outline" : "play-circle-outline"} 
+                size={22} 
+                color={showDemo ? currentThemeColors.textSecondary : currentThemeColors.primary} 
+              />
+            </TouchableOpacity>
+          )}
         </View>
         {exercise.category && (
           <View
@@ -271,6 +290,17 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
           </View>
         )}
       </View>
+
+      {/* ── Demo GIF ── */}
+      {showDemo && exercise.gif_url && (
+        <View style={[styles.gifContainer, { borderColor: currentThemeColors.primary + '44' }]}>
+          <Image 
+            source={{ uri: exercise.gif_url }} 
+            style={styles.gifImage}
+            resizeMode="cover"
+          />
+        </View>
+      )}
 
       {/* ── Steppers ── */}
       <View style={styles.steppersRow}>
@@ -436,6 +466,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
     flexShrink: 1,
+  },
+  demoBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gifContainer: {
+    width: '100%',
+    aspectRatio: 1.4,
+    borderRadius: 14,
+    borderWidth: 2,
+    overflow: 'hidden',
+    marginBottom: 18,
+    backgroundColor: '#000', // standard for video/gifs to avoid flash
+  },
+  gifImage: {
+    width: '100%',
+    height: '100%',
   },
   categoryBadge: {
     paddingHorizontal: 10,

@@ -113,7 +113,7 @@ export default function DashboardScreen() {
       fetchWorkouts();
       fetchBiometrics();
       fetchProfile();
-    }, [ifStart, ifEnd, isIfEnabled, ifStartTime, ifEndTime])
+    }, []) // ✅ EMPTY ARRAY
   );
 
   const fetchProfile = async () => {
