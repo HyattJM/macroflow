@@ -1,0 +1,20 @@
+[
+  {"name": "Barbell Bench Press", "bodyPart": "Chest", "gifUrl": "https://v2.exercisedb.io/image/R9S7m9yM-nJ9Hl"},
+  {"name": "Dumbbell Flyes", "bodyPart": "Chest", "gifUrl": "https://v2.exercisedb.io/image/f6m8J7yM-nJ9Hl"},
+  {"name": "Push-ups", "bodyPart": "Chest", "gifUrl": "https://v2.exercisedb.io/image/nJ9Hl-f6m8J7yM"},
+  {"name": "Deadlift", "bodyPart": "Back", "gifUrl": "https://v2.exercisedb.io/image/m9yM-nJ9Hl-R9S7"},
+  {"name": "Pull-ups", "bodyPart": "Back", "gifUrl": "https://v2.exercisedb.io/image/f6m8J7yM-R9S7m9"},
+  {"name": "Barbell Row", "bodyPart": "Back", "gifUrl": "https://v2.exercisedb.io/image/nJ9Hl-m9yM-R9S7"},
+  {"name": "Lat Pulldown", "bodyPart": "Back", "gifUrl": "https://v2.exercisedb.io/image/R9S7m9yM-f6m8J7"},
+  {"name": "Squat", "bodyPart": "Legs", "gifUrl": "https://v2.exercisedb.io/image/m9yM-f6m8J7yM-nJ"},
+  {"name": "Leg Press", "bodyPart": "Legs", "gifUrl": "https://v2.exercisedb.io/image/nJ9Hl-R9S7m9yM-f"},
+  {"name": "Romanian Deadlift", "bodyPart": "Legs", "gifUrl": "https://v2.exercisedb.io/image/f6m8J7yM-nJ9Hl-m"},
+  {"name": "Overhead Press", "bodyPart": "Shoulders", "gifUrl": "https://v2.exercisedb.io/image/R9S7m9yM-nJ9Hl-f"},
+  {"name": "Lateral Raises", "bodyPart": "Shoulders", "gifUrl": "https://v2.exercisedb.io/image/m9yM-nJ9Hl-R9S7m"},
+  {"name": "Arnold Press", "bodyPart": "Shoulders", "gifUrl": "https://v2.exercisedb.io/image/nJ9Hl-f6m8J7yM-R"},
+  {"name": "Barbell Curl", "bodyPart": "Arms", "gifUrl": "https://v2.exercisedb.io/image/f6m8J7yM-R9S7m9y"},
+  {"name": "Hammer Curls", "bodyPart": "Arms", "gifUrl": "https://v2.exercisedb.io/image/nJ9Hl-m9yM-f6m8J"},
+  {"name": "Tricep Pushdown", "bodyPart": "Arms", "gifUrl": "https://v2.exercisedb.io/image/R9S7m9yM-f6m8J7y"},
+  {"name": "Crunches", "bodyPart": "Waist", "gifUrl": "https://v2.exercisedb.io/image/m9yM-f6m8J7yM-nJ9"},
+  {"name": "Plank", "bodyPart": "Waist", "gifUrl": "https://v2.exercisedb.io/image/nJ9Hl-R9S7m9yM-n"}
+]
