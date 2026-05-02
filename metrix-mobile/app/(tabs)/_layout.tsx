@@ -110,6 +110,13 @@ export default function TabLayout() {
         }}
       />
       <SwipeableTabs.Screen
+        name="exercises"
+        options={{
+          title: 'Library',
+          tabBarIcon: ({ color }) => <Ionicons size={24} name="library" color={color} />,
+        }}
+      />
+      <SwipeableTabs.Screen
         name="chef"
         options={{
           title: 'AI Chef',

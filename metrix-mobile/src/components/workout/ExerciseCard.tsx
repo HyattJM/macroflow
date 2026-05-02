@@ -7,8 +7,8 @@ import {
   FlatList,
   StyleSheet,
   ListRenderItemInfo,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '../../context/ThemeContext';
@@ -22,10 +22,17 @@ export interface CompletedSet {
   is_pr?: boolean;
 }
 
-export interface Exercise {
+export interface MuscleGroup {
+  id: number;
   name: string;
+}
+
+export interface Exercise {
+  id?: number;
+  name: string;
+  gif_url?: string | null;
+  muscle_group?: MuscleGroup;
   category?: string;
-  gif_url?: string;
 }
 
 export interface ExerciseCardProps {
@@ -164,7 +171,7 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
   // Current-session set stack (shown below the inputs)
   const [sets, setSets] = useState<CompletedSet[]>(history);
   const [isSaving, setIsSaving] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // ── Dynamic PR detection ─────────────────────────────────────────────────────
   // Walk the set stack in order. The FIRST set that strictly beats the running
@@ -242,8 +249,15 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
 
   const isAddDisabled = !weight || !reps;
 
+  console.log('Exercise Data:', exercise.name, 'URL:', exercise.gif_url);
+
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => {
+        setIsExpanded(!isExpanded);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }}
       style={[
         styles.card,
         {
@@ -260,174 +274,175 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
           <Text style={[styles.cardTitle, { color: currentThemeColors.text }]} numberOfLines={1}>
             {exercise.name}
           </Text>
-          {exercise.gif_url && (
-            <TouchableOpacity 
-              style={styles.demoBtn} 
-              onPress={() => {
-                setShowDemo(!showDemo);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-              accessibilityLabel="Show form guide"
-            >
-              <Ionicons 
-                name={showDemo ? "eye-off-outline" : "play-circle-outline"} 
-                size={22} 
-                color={showDemo ? currentThemeColors.textSecondary : currentThemeColors.primary} 
-              />
-            </TouchableOpacity>
-          )}
         </View>
-        {exercise.category && (
-          <View
-            style={[
-              styles.categoryBadge,
-              { backgroundColor: currentThemeColors.primary + '18' },
-            ]}
-          >
-            <Text style={[styles.categoryText, { color: currentThemeColors.primary }]}>
-              {exercise.category.toUpperCase()}
-            </Text>
-          </View>
-        )}
+        <View style={styles.headerRight}>
+          {(exercise.muscle_group || exercise.category) && (
+            <View
+              style={[
+                styles.categoryBadge,
+                { backgroundColor: currentThemeColors.primary + '18' },
+              ]}
+            >
+              <Text style={[styles.categoryText, { color: currentThemeColors.primary }]}>
+                {(exercise.muscle_group?.name || exercise.category || '').toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <Ionicons 
+            name={isExpanded ? "chevron-up" : "chevron-down"} 
+            size={20} 
+            color={currentThemeColors.textSecondary} 
+            style={{ marginLeft: 8 }}
+          />
+        </View>
       </View>
 
       {/* ── Demo GIF ── */}
-      {showDemo && exercise.gif_url && (
-        <View style={[styles.gifContainer, { borderColor: currentThemeColors.primary + '44' }]}>
+      {isExpanded && typeof exercise.gif_url === 'string' && exercise.gif_url.length > 0 && (
+        <View style={[styles.gifContainer, { borderColor: currentThemeColors.primary + '44', height: 250 }]}>
           <Image 
             source={{ uri: exercise.gif_url }} 
             style={styles.gifImage}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+            autoplay={true}
+            recyclingKey={exercise.id?.toString() || exercise.name}
           />
         </View>
       )}
 
-      {/* ── Steppers ── */}
-      <View style={styles.steppersRow}>
-        <Stepper
-          label="WEIGHT (LBS)"
-          value={weight}
-          onDecrement={() => adjustWeight(-5)}
-          onIncrement={() => adjustWeight(5)}
-          onChangeText={setWeight}
-        />
-        <View style={styles.stepperDivider} />
-        <Stepper
-          label="REPS"
-          value={reps}
-          onDecrement={() => adjustReps(-1)}
-          onIncrement={() => adjustReps(1)}
-          onChangeText={setReps}
-        />
-      </View>
-
-      {/* ── Add Set Button ── */}
-      <TouchableOpacity
-        style={[
-          styles.addSetBtn,
-          {
-            backgroundColor: isAddDisabled
-              ? currentThemeColors.surface
-              : currentThemeColors.primary + '22',
-            borderColor: isAddDisabled
-              ? currentThemeColors.border
-              : currentThemeColors.primary,
-          },
-        ]}
-        onPress={handleAddSet}
-        disabled={isAddDisabled}
-        accessibilityLabel="Add set"
-      >
-        <Ionicons
-          name="add-circle-outline"
-          size={18}
-          color={isAddDisabled ? currentThemeColors.textSecondary : currentThemeColors.primary}
-        />
-        <Text
-          style={[
-            styles.addSetBtnText,
-            {
-              color: isAddDisabled
-                ? currentThemeColors.textSecondary
-                : currentThemeColors.primary,
-            },
-          ]}
-        >
-          ADD SET
-        </Text>
-      </TouchableOpacity>
-
-      {/* ── History Stack ── */}
-      {sets.length > 0 && (
-        <View style={styles.historySection}>
-          {/* Column headers */}
-          <View style={styles.historyHeader}>
-            <Text style={[styles.historyHeaderText, { color: currentThemeColors.textSecondary }]}>
-              SET
-            </Text>
-            <Text style={[styles.historyHeaderText, { flex: 1, color: currentThemeColors.textSecondary }]}>
-              WEIGHT
-            </Text>
-            <Text style={[styles.historyHeaderText, { flex: 1, color: currentThemeColors.textSecondary }]}>
-              REPS
-            </Text>
-            <View style={{ width: 50 }} />
+      {/* ── Logging UI (Conditional) ── */}
+      {onSave && (
+        <View onStartShouldSetResponder={() => true}>
+          {/* ── Steppers ── */}
+          <View style={styles.steppersRow}>
+            <Stepper
+              label="WEIGHT (LBS)"
+              value={weight}
+              onDecrement={() => adjustWeight(-5)}
+              onIncrement={() => adjustWeight(5)}
+              onChangeText={setWeight}
+            />
+            <View style={styles.stepperDivider} />
+            <Stepper
+              label="REPS"
+              value={reps}
+              onDecrement={() => adjustReps(-1)}
+              onIncrement={() => adjustReps(1)}
+              onChangeText={setReps}
+            />
           </View>
 
-          <FlatList<CompletedSet>
-            data={sets}
-            keyExtractor={item => item.id}
-            renderItem={renderSetItem}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => (
-              <View style={[styles.separator, { backgroundColor: currentThemeColors.border }]} />
-            )}
-          />
-
-          {/* Volume summary */}
-          <View
+          {/* ── Add Set Button ── */}
+          <TouchableOpacity
             style={[
-              styles.volumeRow,
-              { backgroundColor: currentThemeColors.primary + '10', borderColor: currentThemeColors.border },
+              styles.addSetBtn,
+              {
+                backgroundColor: isAddDisabled
+                  ? currentThemeColors.surface
+                  : currentThemeColors.primary + '22',
+                borderColor: isAddDisabled
+                  ? currentThemeColors.border
+                  : currentThemeColors.primary,
+              },
             ]}
+            onPress={handleAddSet}
+            disabled={isAddDisabled}
+            accessibilityLabel="Add set"
           >
-            <Ionicons name="flash-outline" size={14} color={currentThemeColors.primary} />
-            <Text style={[styles.volumeLabel, { color: currentThemeColors.primary }]}>
-              TOTAL VOLUME
+            <Ionicons
+              name="add-circle-outline"
+              size={18}
+              color={isAddDisabled ? currentThemeColors.textSecondary : currentThemeColors.primary}
+            />
+            <Text
+              style={[
+                styles.addSetBtnText,
+                {
+                  color: isAddDisabled
+                    ? currentThemeColors.textSecondary
+                    : currentThemeColors.primary,
+                },
+              ]}
+            >
+              ADD SET
             </Text>
-            <Text style={[styles.volumeValue, { color: currentThemeColors.text }]}>
-              {sets.reduce((sum, s) => sum + s.weight * s.reps, 0).toLocaleString()} lbs
-            </Text>
-          </View>
+          </TouchableOpacity>
+
+          {/* ── History Stack ── */}
+          {sets.length > 0 && (
+            <View style={styles.historySection}>
+              {/* Column headers */}
+              <View style={styles.historyHeader}>
+                <Text style={[styles.historyHeaderText, { color: currentThemeColors.textSecondary }]}>
+                  SET
+                </Text>
+                <Text style={[styles.historyHeaderText, { flex: 1, color: currentThemeColors.textSecondary }]}>
+                  WEIGHT
+                </Text>
+                <Text style={[styles.historyHeaderText, { flex: 1, color: currentThemeColors.textSecondary }]}>
+                  REPS
+                </Text>
+                <View style={{ width: 50 }} />
+              </View>
+
+              <FlatList<CompletedSet>
+                data={sets}
+                keyExtractor={item => item.id}
+                renderItem={renderSetItem}
+                scrollEnabled={false}
+                ItemSeparatorComponent={() => (
+                  <View style={[styles.separator, { backgroundColor: currentThemeColors.border }]} />
+                )}
+              />
+
+              {/* Volume summary */}
+              <View
+                style={[
+                  styles.volumeRow,
+                  { backgroundColor: currentThemeColors.primary + '10', borderColor: currentThemeColors.border },
+                ]}
+              >
+                <Ionicons name="flash-outline" size={14} color={currentThemeColors.primary} />
+                <Text style={[styles.volumeLabel, { color: currentThemeColors.primary }]}>
+                  TOTAL VOLUME
+                </Text>
+                <Text style={[styles.volumeValue, { color: currentThemeColors.text }]}>
+                  {sets.reduce((sum, s) => sum + s.weight * s.reps, 0).toLocaleString()} lbs
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* ── SAVE Button ── */}
+          <TouchableOpacity
+            style={[
+              styles.saveBtn,
+              {
+                backgroundColor:
+                  sets.length === 0 || isSaving
+                    ? currentThemeColors.surface
+                    : currentThemeColors.success,
+                opacity: sets.length === 0 ? 0.5 : 1,
+              },
+            ]}
+            onPress={handleSave}
+            disabled={sets.length === 0 || isSaving}
+            accessibilityLabel="Save exercise"
+          >
+            {isSaving ? (
+              <Text style={styles.saveBtnText}>SAVING…</Text>
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+                <Text style={styles.saveBtnText}>SAVE</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       )}
-
-      {/* ── SAVE Button ── */}
-      <TouchableOpacity
-        style={[
-          styles.saveBtn,
-          {
-            backgroundColor:
-              sets.length === 0 || isSaving
-                ? currentThemeColors.surface
-                : currentThemeColors.success,
-            opacity: sets.length === 0 ? 0.5 : 1,
-          },
-        ]}
-        onPress={handleSave}
-        disabled={sets.length === 0 || isSaving}
-        accessibilityLabel="Save exercise"
-      >
-        {isSaving ? (
-          <Text style={styles.saveBtnText}>SAVING…</Text>
-        ) : (
-          <>
-            <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
-            <Text style={styles.saveBtnText}>SAVE</Text>
-          </>
-        )}
-      </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -459,7 +474,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     flex: 1,
-    marginRight: 10,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   cardTitle: {
     fontSize: 17,

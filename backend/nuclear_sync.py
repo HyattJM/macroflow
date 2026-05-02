@@ -17,19 +17,17 @@ HEADERS = {
 }
 
 def paginated_nuclear_sync():
-    print("🚀 Starting Nuclear Sync (Pagination Mode)...")
+    print("🚀 Starting Nuclear Sync (Image Service Patch)...")
     
-    # Wipe the slate clean ONE time before looping
     Exercise.objects.all().delete()
     MuscleGroup.objects.all().delete()
     print("🧹 Cleaned old database records.")
 
     offset = 0
-    limit = 100  # Chunk size the API will actually accept
+    limit = 100 
     total_synced = 0
 
     while True:
-        # Dynamic URL that shifts the offset every loop
         url = f"https://exercisedb.p.rapidapi.com/exercises?limit={limit}&offset={offset}"
         print(f"📡 Fetching offset {offset}...")
         
@@ -39,7 +37,6 @@ def paginated_nuclear_sync():
             if response.status_code == 200:
                 data = response.json()
                 
-                # If the API returns an empty list, we've grabbed everything
                 if not data:
                     print("🏁 Reached the end of the database.")
                     break
@@ -48,17 +45,18 @@ def paginated_nuclear_sync():
                     bp_name = item.get('bodyPart', 'Other').title()
                     muscle_group, _ = MuscleGroup.objects.get_or_create(name=bp_name)
                     
+                    # Synthesize the new Live Image Service URL
+                    exercise_id = item.get('id')
+                    live_gif_url = f"https://exercisedb.p.rapidapi.com/image?exerciseId={exercise_id}&resolution=360&rapidapi-key={API_KEY}"
+                    
                     Exercise.objects.create(
                         name=item['name'].title(),
                         muscle_group=muscle_group,
-                        gif_url=item.get('gifUrl', '')
+                        gif_url=live_gif_url
                     )
                     total_synced += 1
                     
-                # Increase offset for the next loop
                 offset += limit
-                
-                # Sleep for 0.5 seconds so RapidAPI doesn't think we are a DDoS attack
                 time.sleep(0.5)
                 
             else:
@@ -70,7 +68,7 @@ def paginated_nuclear_sync():
             print(f"💥 Script Error: {e}")
             break
 
-    print(f"\n🏆 MISSION ACCOMPLISHED! {total_synced} total exercises synced with official GIFs.")
+    print(f"\n🏆 MISSION ACCOMPLISHED! {total_synced} exercises synced with Live Image URLs.")
 
 if __name__ == "__main__":
     paginated_nuclear_sync()
