@@ -130,17 +130,18 @@ export default function DashboardScreen() {
   const isDark = currentThemeColors.isDark;
 
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
 
   useFocusEffect(
     useCallback(() => {
+      if (!isAuthenticated) return;
       fetchDailyMacros();
       fetchTokens();
       loadIfSettings();
       fetchWorkouts();
       fetchBiometrics();
       fetchProfile();
-    }, []) // ✅ EMPTY ARRAY
+    }, [isAuthenticated]) // ✅ Added isAuthenticated to deps
   );
 
   const fetchProfile = async () => {

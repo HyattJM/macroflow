@@ -22,9 +22,11 @@ const ACTIVITY_LEVELS = [
  * Used to adjust the final calorie budget (surplus or deficit).
  */
 const GOALS = [
-  { label: 'Lose Weight', value: 'lose weight', desc: 'Focus on fat loss' },
-  { label: 'Maintain', value: 'maintain', desc: 'Keep current weight' },
-  { label: 'Gain Muscle', value: 'gain muscle', desc: 'Focus on lean mass' },
+  { label: 'Lose Weight', value: 'lose weight', desc: 'Aggressive fat loss' },
+  { label: 'Get Lean & Defined', value: 'get lean', desc: 'Body recomposition' },
+  { label: 'Maintain Health', value: 'maintain', desc: 'Maintenance calories' },
+  { label: 'Build Muscle', value: 'build muscle', desc: 'Lean bulk' },
+  { label: 'Athletic Performance', value: 'performance', desc: 'Focus on endurance' },
 ];
 
 /**
@@ -85,9 +87,11 @@ export default function OnboardingScreen() {
     };
 
     const goalMap: Record<string, string> = {
-      'lose weight': 'weight_loss',
+      'lose weight': 'lose_weight',
+      'get lean': 'get_lean',
       'maintain': 'maintain',
-      'gain muscle': 'gain_muscle',
+      'build muscle': 'gain_muscle',
+      'performance': 'performance',
     };
 
     const payload = {
@@ -250,10 +254,10 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   scrollContent: { padding: 24, paddingTop: 60 },
-  brandTitle: { fontSize: 16, fontWeight: '800', color: '#FF2D55', textAlign: 'center', marginBottom: 20, letterSpacing: 2 },
+  brandTitle: { fontSize: 16, fontWeight: '800', color: '#0ea5e9', textAlign: 'center', marginBottom: 20, letterSpacing: 2 },
   progressContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 30 },
   progressDot: { width: 40, height: 4, backgroundColor: '#333', marginHorizontal: 4, borderRadius: 2 },
-  progressDotActive: { backgroundColor: '#FF2D55' },
+  progressDotActive: { backgroundColor: '#0ea5e9' },
   glassCard: { 
     backgroundColor: 'rgba(28, 28, 30, 0.8)', 
     borderRadius: 24, 
@@ -285,7 +289,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333'
   },
-  choiceButtonActive: { backgroundColor: '#FF2D55', borderColor: '#FF2D55' },
+  choiceButtonActive: { backgroundColor: '#0ea5e9', borderColor: '#0ea5e9' },
   choiceText: { color: '#888', fontSize: 16, fontWeight: '600' },
   choiceTextActive: { color: '#fff' },
   bigChoice: { 
@@ -296,7 +300,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333'
   },
-  bigChoiceActive: { borderColor: '#FF2D55', backgroundColor: 'rgba(255, 45, 85, 0.1)' },
+  bigChoiceActive: { borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)' },
   bigChoiceLabel: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
   bigChoiceDesc: { color: '#888', fontSize: 14 },
   summaryText: { color: '#aaa', fontSize: 16, lineHeight: 24, marginBottom: 24 },
@@ -306,12 +310,12 @@ const styles = StyleSheet.create({
   backButton: { padding: 18, justifyContent: 'center' },
   backButtonText: { color: '#aaa', fontSize: 16, fontWeight: '600' },
   nextButton: { 
-    backgroundColor: '#FF2D55', 
+    backgroundColor: '#0ea5e9', 
     padding: 18, 
     borderRadius: 16, 
     alignItems: 'center', 
     flex: 1,
-    shadowColor: '#FF2D55',
+    shadowColor: '#0ea5e9',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

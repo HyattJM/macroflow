@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   title: { 
     fontSize: 54, 
     fontWeight: '900', 
-    color: '#FF2D55', 
+    color: '#0ea5e9', 
     textAlign: 'center', 
     marginBottom: 10 
   },
@@ -113,12 +113,12 @@ const styles = StyleSheet.create({
     borderColor: '#333'
   },
   button: { 
-    backgroundColor: '#FF2D55', 
+    backgroundColor: '#0ea5e9', 
     padding: 18, 
     borderRadius: 14, 
     alignItems: 'center', 
     marginTop: 10,
-    shadowColor: '#FF2D55',
+    shadowColor: '#0ea5e9',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,
