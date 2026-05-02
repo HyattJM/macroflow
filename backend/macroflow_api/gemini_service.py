@@ -11,10 +11,20 @@ env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
 load_dotenv(env_path)
 
 class RateLimitException(Exception):
+    """Exception raised when the AI service returns a 429 or quota-related error."""
     pass
 
 class GeminiNutritionService:
+    """
+    Service layer for interacting with Google's Gemini AI models.
+    Provides multimodal (text and vision) capabilities for nutrition analysis, 
+    recipe generation, and automated grocery list consolidation.
+    """
     def __init__(self):
+        """
+        Initializes the GenAI client using the GEMINI_API_KEY from environment variables.
+        Gracefully handles missing keys by setting self.client to None.
+        """
         try:
             # genai.Client() expects GOOGLE_API_KEY, but our .env uses GEMINI_API_KEY
             api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
@@ -25,7 +35,9 @@ class GeminiNutritionService:
  
     def _clean_json_response(self, text):
         """
-        Extracts JSON from the AI response, even if it contains commentary or markdown.
+        Sanitizes the AI's raw text response to extract a valid JSON string.
+        AI models often wrap JSON in markdown blocks (```json) or add conversational filler.
+        This method uses regex to isolate the core JSON structure.
         """
         if not text:
             return ""
@@ -47,7 +59,11 @@ class GeminiNutritionService:
 
     def analyze_meal_description(self, description):
         """
-        Analyzes a text description of a meal and returns a list of food items with nutrition data.
+        Parses a natural language meal description into structured nutritional data.
+        
+        Logic:
+        Constructs a prompt that instructs the model to return a JSON array of food items.
+        Explicitly asks for 'Net Carbs' calculation (Total Carbs - Fiber) to support Keto tracking.
         """
         if not self.client:
             return None
@@ -81,8 +97,12 @@ class GeminiNutritionService:
 
     def analyze_meal_image_with_modifications(self, base64_image, modifier_text):
         """
-        Analyzes an image and a modifier text string (e.g., 'McDonalds, no bun') and returns a JSON object mapped to macroflow_api_fooditem schema.
-        Handles subtracted macros for removed items.
+        Processes a food image and a text-based modification request.
+        
+        Logic:
+        Uses a Multimodal prompt. If a user provides an image of a burger but adds 
+        the modifier "no bun", the AI is instructed to identify the burger ingredients 
+        and subtract the nutritional footprint of the bun before returning final macros.
         """
         if not self.client:
             return None
@@ -128,6 +148,10 @@ class GeminiNutritionService:
             return None
 
     def generate_keto_recipe(self, ingredients_text):
+        """
+        Generates a creative keto recipe based on a user's available pantry items.
+        Ensures all generated recipes remain under 10g net carbs per serving.
+        """
         if not self.client:
             return None
             
@@ -162,6 +186,10 @@ class GeminiNutritionService:
             return None
 
     def generate_meal_for_macros(self, remaining_macros):
+        """
+        Generates a customized recipe that fits within a specific set of remaining macros.
+        Used by the 'AI Chef' to help users hit their daily targets without overshooting.
+        """
         if not self.client:
             return None
             
@@ -206,6 +234,13 @@ class GeminiNutritionService:
             return None
 
     def generate_grocery_list(self, ingredients_list):
+        """
+        Consolidates multiple ingredient lists into a single, organized grocery list.
+        
+        Logic:
+        Summarizes quantities (e.g. '1 cup' + '2 cups' = '3 cups') and 
+        categorizes items by grocery aisle to improve shopping efficiency.
+        """
         if not self.client:
             return None
             
@@ -241,5 +276,5 @@ class GeminiNutritionService:
                 raise RateLimitException("AI servers are currently at capacity. Please try again later.")
             return None
 
-# Singleton instance
+# Singleton instance for global application use
 gemini_service = GeminiNutritionService()

@@ -54,6 +54,10 @@ interface StepperProps {
   step?: number;
 }
 
+/**
+ * Stepper component for numerical input.
+ * Provides a tactile interface for adjusting weight and reps with haptic feedback.
+ */
 function Stepper({
   label,
   value,
@@ -112,6 +116,10 @@ function Stepper({
 
 // ─── Set Row (history item) ────────────────────────────────────────────────────
 
+/**
+ * Renders a single row in the exercise history list.
+ * Displays weight, reps, and a dynamic PR (Personal Record) badge.
+ */
 function SetRow({ item, index, isPr }: { item: CompletedSet; index: number; isPr: boolean }) {
   const { currentThemeColors } = useAppTheme();
 
@@ -161,6 +169,24 @@ function SetRow({ item, index, isPr }: { item: CompletedSet; index: number; isPr
 
 // ─── ExerciseCard ──────────────────────────────────────────────────────────────
 
+/**
+ * ExerciseCard is a dual-purpose component used for both visual reference 
+ * (GIF guides) and interactive workout logging.
+ * 
+ * Logic Rationale & Performance:
+ * 1. Memory Management: Heavy GIF assets are strictly conditionally rendered. 
+ *    The `<Image>` component only exists in the DOM when `isExpanded` is true. 
+ *    This forces an unmount when closed, instantly freeing up the CPU decoding 
+ *    overhead for that asset.
+ * 2. `expo-image` Optimization:
+ *    - `recyclingKey`: Instructs the underlying engine (Fresco/SDWebImage) to 
+ *      immediately purge old image data when the component is unmounted or 
+ *      recycled by a list.
+ *    - `cachePolicy="memory-disk"`: Balances instant retrieval with minimal 
+ *      RAM footprint.
+ * 3. PR Logic: PRs are derived dynamically via `useMemo` by finding the absolute 
+ *    best set (max reps) for each unique weight class in the current session.
+ */
 export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardProps) {
   const { currentThemeColors } = useAppTheme();
 
@@ -173,29 +199,27 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
   const [isSaving, setIsSaving] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // ── Dynamic PR detection ─────────────────────────────────────────────────────
-  // Walk the set stack in order. The FIRST set that strictly beats the running
-  // max for its weight class earns the PR badge. Ties never qualify — only
-  // the set that originally set the record is awarded the trophy.
- 
+  /**
+   * Calculates which sets in the current stack qualify as Personal Records (PR).
+   * A set is a PR if it represents the highest reps achieved for its specific weight.
+   */
   const prSetIndices = useMemo(() => {
-  // Step 1: Find the absolute best set index for each weight class
-  const bestIndices: Record<number, number> = {}; 
-  const maxReps: Record<number, number> = {}; 
+    // Step 1: Find the absolute best set index for each weight class
+    const bestIndices: Record<number, number> = {}; 
+    const maxReps: Record<number, number> = {}; 
 
-  sets.forEach((set, index) => {
-    // If we haven't seen this weight yet, or if these reps strictly beat the old max
-    if (maxReps[set.weight] === undefined || set.reps > maxReps[set.weight]) {
-      maxReps[set.weight] = set.reps;
-      bestIndices[set.weight] = index; // Overwrites the old index, stealing the crown
-    }
-  });
+    sets.forEach((set, index) => {
+      // If we haven't seen this weight yet, or if these reps strictly beat the old max
+      if (maxReps[set.weight] === undefined || set.reps > maxReps[set.weight]) {
+        maxReps[set.weight] = set.reps;
+        bestIndices[set.weight] = index; // Overwrites the old index, stealing the crown
+      }
+    });
 
-  // Step 2: Return a Set of ONLY the final, absolute winners
-  return new Set(Object.values(bestIndices));
-}, [sets]);
+    // Step 2: Return a Set of ONLY the final, absolute winners
+    return new Set(Object.values(bestIndices));
+  }, [sets]);
 
-  // ── Stepper helpers ──────────────────────────────────────────────────────────
   const adjustWeight = useCallback(
     (delta: number) =>
       setWeight(prev => String(Math.max(0, Math.round(((parseFloat(prev) || 0) + delta) * 10) / 10))),
@@ -208,13 +232,15 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
     []
   );
 
-  // ── Add set to local stack ───────────────────────────────────────────────────
+  /**
+   * Pushes the current weight/reps into the session stack.
+   * Retains the values for rapid consecutive entry (common for multi-set protocols).
+   */
   const handleAddSet = useCallback(() => {
     const w = parseFloat(weight);
     const r = parseInt(reps, 10);
     if (!w || !r) return;
 
-    // No is_pr flag stored — PR status is derived dynamically from maxRepsPerWeight.
     const newSet: CompletedSet = {
       id: `${Date.now()}-${Math.random()}`,
       weight: w,
@@ -223,10 +249,11 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSets(prev => [...prev, newSet]);
-    // Both weight and reps are intentionally retained for rapid consecutive entry.
   }, [weight, reps]);
 
-  // ── Save ─────────────────────────────────────────────────────────────────────
+  /**
+   * Submits the full set stack to the parent callback.
+   */
   const handleSave = useCallback(async () => {
     if (sets.length === 0) return;
     setIsSaving(true);
@@ -235,7 +262,6 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
     setIsSaving(false);
   }, [sets, onSave]);
 
-  // ── Render history item ───────────────────────────────────────────────────────
   const renderSetItem = useCallback(
     ({ item, index }: ListRenderItemInfo<CompletedSet>) => (
       <SetRow
@@ -248,8 +274,6 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
   );
 
   const isAddDisabled = !weight || !reps;
-
-  console.log('Exercise Data:', exercise.name, 'URL:', exercise.gif_url);
 
   return (
     <TouchableOpacity
@@ -445,8 +469,6 @@ export function ExerciseCard({ exercise, history = [], onSave }: ExerciseCardPro
     </TouchableOpacity>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   // Card

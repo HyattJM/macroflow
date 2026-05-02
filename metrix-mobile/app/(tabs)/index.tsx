@@ -23,11 +23,16 @@ const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
 
 // Helper to format time for display
+/**
+ * Utility to format a Date object into a 24-hour HH:mm string.
+ */
 const formatTime = (date: Date) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
-// Helper to parse HH:mm into a Date object
+/**
+ * Utility to parse a HH:mm string into a Date object for the current day.
+ */
 const parseTime = (timeStr: string) => {
   try {
     const [h, m] = timeStr.split(':').map(Number);
@@ -41,6 +46,15 @@ const parseTime = (timeStr: string) => {
   }
 };
 
+/**
+ * Calculates dynamic nutritional goals based on current biometrics.
+ * Uses the Mifflin-St Jeor Equation to estimate BMR and TDEE.
+ * 
+ * Keto Waterfall Logic:
+ * 1. Net Carbs: Fixed at 50g.
+ * 2. Protein: 1g per lb of body weight.
+ * 3. Fat: Remaining calories from TDEE.
+ */
 const calculateDynamicGoals = (currentWeightLbs: number, age: number, heightCm: number) => {
   const weightKg = currentWeightLbs / 2.20462;
   
@@ -60,6 +74,19 @@ const calculateDynamicGoals = (currentWeightLbs: number, age: number, heightCm: 
   };
 };
 
+/**
+ * DashboardScreen is the primary hub of the MacroFlow application.
+ * It provides a comprehensive overview of nutrition, biometrics, 
+ * intermittent fasting, and workout history.
+ * 
+ * Logic Rationale:
+ * - Data Aggregation: Fetches from multiple endpoints (daily-summary, biometrics, water, workouts, tokens) 
+ *   to populate the Tokyo Night themed cards.
+ * - Dynamic Goals: Automatically recalculates macro targets whenever weight or profile stats change.
+ * - IF Timer: Manages a complex real-time countdown for Intermittent Fasting, handling 
+ *   multi-day spans and midnight crossovers.
+ * - Animations: Uses `react-native-reanimated` (FadeInUp) to provide a premium entrance feel.
+ */
 export default function DashboardScreen() {
   const [macros, setMacros] = useState(null);
   const [waterOz, setWaterOz] = useState(0);

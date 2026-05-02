@@ -1,3 +1,11 @@
+"""
+Migration script to seed the database with a curated list of exercises.
+
+This script maps exercises to their respective muscle groups and performs 
+a batch injection into the Django database. It prevents duplicates by 
+using get_or_create.
+"""
+
 from macroflow_api.models import Exercise, MuscleGroup
 
 # The translated frontend database
@@ -12,26 +20,31 @@ FRONTEND_DB = [
     { "category": "Triceps", "exercises": ["Cable Overhead Triceps Extension", "Close Grip Barbell Bench Press", "Dumbbell Overhead Triceps Extension", "EZ-Bar Skullcrusher", "Lying Triceps Extension", "Parallel Bar Triceps Dip", "Ring Dip", "Rope Push Down", "Smith Machine Close Grip Bench Press", "Triceps Press Nautilus"] }
 ]
 
-added_count = 0
+def run_migration():
+    """Executes the exercise migration logic."""
+    added_count = 0
 
-print("\n🚀 Starting the Great Migration...\n")
+    print("\n🚀 Starting the Great Migration...\n")
 
-for group in FRONTEND_DB:
-    category_name = group["category"]
-    
-    # 1. Safely grab or create the Muscle Group first
-    muscle_group, _ = MuscleGroup.objects.get_or_create(name=category_name)
+    for group in FRONTEND_DB:
+        category_name = group["category"]
+        
+        # 1. Safely grab or create the Muscle Group first
+        muscle_group, _ = MuscleGroup.objects.get_or_create(name=category_name)
 
-    for ex_name in group["exercises"]:
-        # 2. Assign the muscle group to the exercise during creation
-        obj, created = Exercise.objects.get_or_create(
-            name=ex_name,
-            defaults={'muscle_group': muscle_group} 
-        )
-        if created:
-            added_count += 1
-            print(f"✅ Added: {ex_name} ({category_name})")
-        else:
-            print(f"⚡ Skipped: {ex_name} (Already in database)")
+        for ex_name in group["exercises"]:
+            # 2. Assign the muscle group to the exercise during creation
+            obj, created = Exercise.objects.get_or_create(
+                name=ex_name,
+                defaults={'muscle_group': muscle_group} 
+            )
+            if created:
+                added_count += 1
+                print(f"✅ Added: {ex_name} ({category_name})")
+            else:
+                print(f"⚡ Skipped: {ex_name} (Already in database)")
 
-print(f"\n🎉 Migration Complete! Successfully injected {added_count} new exercises into Django.\n")
+    print(f"\n🎉 Migration Complete! Successfully injected {added_count} new exercises into Django.\n")
+
+if __name__ == "__main__":
+    run_migration()

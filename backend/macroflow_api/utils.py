@@ -2,8 +2,25 @@ import re
 
 def calculate_calories_burned(exercise_name, duration_minutes, weight_kg):
     """
-    Calculates calories burned based on MET values for various exercises.
-    Formula: (MET * 3.5 * weight_kg / 200) * duration_minutes
+    Estimates total calories expended during a specific physical activity.
+    
+    Logic:
+    Uses the Metabolic Equivalent of Task (MET) formula:
+    Calories = (MET * 3.5 * weight_kg / 200) * duration_minutes
+
+    MET Values Rationale:
+    - MET is a ratio of your working metabolic rate relative to your resting metabolic rate.
+    - One MET is the energy you spend sitting at rest.
+    - This function maps common exercise keywords (like 'running', 'deadlift') to 
+      validated MET constants.
+    
+    Args:
+        exercise_name (str): The name of the exercise to look up MET for.
+        duration_minutes (int): How long the exercise was performed.
+        weight_kg (float): User's weight in kilograms.
+
+    Returns:
+        float: Total calories burned, rounded to 2 decimal places.
     """
     
     # Mapping table of exercise keywords to MET values

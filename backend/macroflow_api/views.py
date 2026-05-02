@@ -17,44 +17,91 @@ from .gemini_service import gemini_service, RateLimitException
 from .utils import calculate_calories_burned
 
 class UserViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing User objects.
+    Provides standard CRUD operations for authenticated users.
+    """
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
 class BodyWeightViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing BodyWeight logs.
+    Used to track historical weight changes and calculate BMI trends.
+    """
     queryset = BodyWeight.objects.all()
     serializer_class = BodyWeightSerializer
 
 class MuscleGroupViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for the MuscleGroup dictionary.
+    Read-only for most users; provides categorization for exercises.
+    """
     queryset = MuscleGroup.objects.all()
     serializer_class = MuscleGroupSerializer
 
 class ExerciseViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Exercise definitions.
+    Returns exercise metadata including form-guide GIF URLs.
+    """
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
 
 class WorkoutSessionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for WorkoutSessions.
+    Acts as a container for grouped ExerciseSet logs.
+    """
     queryset = WorkoutSession.objects.all()
     serializer_class = WorkoutSessionSerializer
 
 class ExerciseSetViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for individual ExerciseSets.
+    Records resistance, volume, and PR achievements.
+    """
     queryset = ExerciseSet.objects.all()
     serializer_class = ExerciseSetSerializer
 
 class FoodItemViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for FoodItem entries.
+    Provides macro-nutritional data for the logging engine.
+    """
     queryset = FoodItem.objects.all()
     serializer_class = FoodItemSerializer
 
 class FoodLogViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for daily FoodLogs.
+    Tracks what the user ate and in what quantities.
+    """
     queryset = FoodLog.objects.all()
     serializer_class = FoodLogSerializer
 
 class WaterLogViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for WaterLog entries.
+    Tracks hydration progress against the user's daily goal.
+    """
     queryset = WaterLog.objects.all()
     serializer_class = WaterLogSerializer
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def scan_barcode(request):
+    """
+    Identifies a food item via barcode.
+    
+    Flow:
+    1. Check local DB for an existing item with this barcode.
+    2. Fallback to Gemini AI to identify the product and estimate macros based on common knowledge.
+    3. Mock fallback for testing if AI fails.
+
+    Payload: {"barcode": "string"}
+    Response: {"status": "success", "data": FoodItemObject, "source": "local|gemini_ai|mock_fallback"}
+    """
     barcode = request.data.get('barcode')
     if not barcode:
         return Response({"error": "Barcode is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -102,6 +149,13 @@ def scan_barcode(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def analyze_nutrition(request):
+    """
+    NLP-based nutrition analysis.
+    Takes a natural language description of a meal and returns estimated macros.
+
+    Payload: {"description": "1 chicken breast and 100g of rice"}
+    Response: {"status": "success", "data": [{"name": "...", "calories": 0, ...}]}
+    """
     description = request.data.get('description')
     if not description:
         return Response({"error": "Description is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -115,6 +169,14 @@ def analyze_nutrition(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def scan_keto(request):
+    """
+    Keto-Vision image analysis.
+    Uses Gemini Vision to identify food from a base64 image and estimate macros.
+    Deducts one AI token from the user profile upon success.
+
+    Payload: {"image": "base64_string", "modifier": "string (optional)"}
+    Response: {"status": "success", "data": NutritionLogObject}
+    """
     image_base64 = request.data.get('image')
     modifier = request.data.get('modifier', '')
     
@@ -152,6 +214,13 @@ def scan_keto(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_nutrition_logs(request):
+    """
+    Retrieves nutrition logs for a user within a specified timeframe.
+    Defaults to 'today' if no date parameters are provided.
+
+    Query Params: ?date=YYYY-MM-DD or ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
+    Response: {"status": "success", "data": [Logs], "totals": {"calories": 0, ...}}
+    """
     logs = NutritionLog.objects.filter(user=request.user)
 
     date_param = request.query_params.get('date')
@@ -195,6 +264,12 @@ def get_nutrition_logs(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_daily_summary(request):
+    """
+    Provides a high-level summary of the user's progress for the current day.
+    Includes totals for macros consumed, calories burned, and current goals.
+
+    Response: {"calories": 0, "protein": 0, ..., "goals": {...}}
+    """
     today = timezone.localdate()
     
     # Gathering logs for today filtered by user
@@ -230,11 +305,20 @@ def get_daily_summary(request):
     return Response(payload)
 
 def count_safe(val):
+    """Rounding helper to prevent NoneType errors in JSON responses."""
     return round(val, 1) if val is not None else 0.0
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def log_workout(request):
+    """
+    Logs a completed workout exercise.
+    Calculates calories burned based on MET values for the exercise and user weight.
+    Supports both legacy flat logging and multi-set aggregation.
+
+    Payload: {"exercise_name": "...", "duration": 30, "sets_list": [{"weight": 0, "reps": 0}]}
+    Response: {"status": "success", "data": WorkoutLogObject}
+    """
     try:
         exercise_name = request.data.get('exercise_name', 'Unknown Exercise')
         duration = int(request.data.get('duration', 30))
@@ -281,6 +365,9 @@ def log_workout(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_workouts(request):
+    """
+    Retrieves all workout logs for the authenticated user, ordered by recency.
+    """
     logs = WorkoutLog.objects.filter(user=request.user).order_by('-created_at')
     serializer = WorkoutLogSerializer(logs, many=True)
     return Response({"status": "success", "data": serializer.data})
@@ -288,6 +375,10 @@ def get_workouts(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def update_nutrition_log(request, pk):
+    """
+    Updates an existing nutrition log entry.
+    Ensures the log belongs to the authenticated user.
+    """
     try:
         log = NutritionLog.objects.get(pk=pk, user=request.user)
     except NutritionLog.DoesNotExist:
@@ -308,6 +399,9 @@ def update_nutrition_log(request, pk):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_nutrition_log(request, pk):
+    """
+    Deletes a nutrition log entry.
+    """
     try:
         log = NutritionLog.objects.get(pk=pk, user=request.user)
         log.delete()
@@ -318,6 +412,9 @@ def delete_nutrition_log(request, pk):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def update_workout_log(request, pk):
+    """
+    Updates an existing workout log entry.
+    """
     try:
         log = WorkoutLog.objects.get(pk=pk, user=request.user)
     except WorkoutLog.DoesNotExist:
@@ -337,6 +434,9 @@ def update_workout_log(request, pk):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_workout_log(request, pk):
+    """
+    Deletes a workout log entry.
+    """
     try:
         log = WorkoutLog.objects.get(pk=pk, user=request.user)
         log.delete()
@@ -347,6 +447,12 @@ def delete_workout_log(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def log_water(request):
+    """
+    Logs water intake in ounces.
+
+    Payload: {"amount_oz": 8}
+    Response: {"status": "success", "data": WaterLogObject}
+    """
     try:
         amount_oz = int(request.data.get('amount_oz', 0))
         if amount_oz <= 0:
@@ -361,6 +467,9 @@ def log_water(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_today_water(request):
+    """
+    Retrieves the total water consumed by the user today.
+    """
     today = timezone.localdate()
     logs_today = WaterLog.objects.filter(user=request.user, created_at__date=today)
     
@@ -371,6 +480,12 @@ def get_today_water(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def log_nutrition(request):
+    """
+    Manually logs a food item with macros.
+
+    Payload: {"food_name": "...", "calories": 0, "protein": 0, ...}
+    Response: {"status": "success", "data": NutritionLogObject}
+    """
     try:
         new_log = NutritionLog.objects.create(
             user=request.user,
@@ -388,6 +503,9 @@ def log_nutrition(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_wallet(request):
+    """
+    Returns the user's current AI token balance.
+    """
     profile = getattr(request.user, 'userprofile', None)
     tokens = profile.ai_tokens if profile else 0
     return Response({"status": "success", "ai_tokens": tokens})
@@ -401,6 +519,12 @@ def get_tokens(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_recipe(request):
+    """
+    AI Chef feature: Generates a keto-friendly recipe based on a list of ingredients.
+    
+    Payload: {"ingredients": "string or list"}
+    Response: {"status": "success", "data": RecipeData}
+    """
     ingredients = request.data.get('ingredients')
     if not ingredients:
         return Response({"error": "Ingredients are required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -418,6 +542,9 @@ def generate_recipe(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def save_recipe(request):
+    """
+    Saves an AI-generated or user-defined recipe to the user's collection.
+    """
     try:
         new_recipe = SavedRecipe.objects.create(
             user=request.user,
@@ -437,6 +564,9 @@ def save_recipe(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_saved_recipes(request):
+    """
+    Retrieves all recipes saved by the user.
+    """
     recipes = SavedRecipe.objects.filter(user=request.user).order_by('-created_at')
     serializer = SavedRecipeSerializer(recipes, many=True)
     return Response({"status": "success", "data": serializer.data})
@@ -444,6 +574,12 @@ def get_saved_recipes(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_grocery_list(request):
+    """
+    AI feature: Consolidates ingredients from multiple saved recipes into a grocery list.
+    
+    Payload: {"recipe_ids": [1, 2]}
+    Response: {"status": "success", "data": GroceryListData}
+    """
     recipe_ids = request.data.get('recipe_ids', [])
     if not recipe_ids:
         return Response({"error": "Recipe IDs are required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -473,6 +609,12 @@ def generate_grocery_list(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_chef_meal(request):
+    """
+    AI Chef: Recommends a meal based on the user's remaining nutritional budget for the day.
+    Deducts one AI token upon success.
+
+    Response: {"status": "success", "data": RecipeData}
+    """
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     if profile.ai_tokens <= 0:
         return Response({"error": "Out of free AI tokens. Upgrade to Pro."}, status=status.HTTP_402_PAYMENT_REQUIRED)
@@ -526,6 +668,25 @@ def generate_chef_meal(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def submit_onboarding(request):
+    """
+    Handles user onboarding and calculates personalized keto macro targets.
+    
+    Logic:
+    1. Unit Conversion: Converts Imperial (lbs, inches) to Metric (kg, cm) for calculation.
+    2. BMR (Basal Metabolic Rate): Calculated using the Mifflin-St Jeor Equation, 
+       which is considered the most accurate for general populations.
+    3. TDEE (Total Daily Energy Expenditure): Multiplies BMR by an activity factor.
+    4. Goal Adjustment: 
+       - Weight Loss: TDEE - 500 kcal
+       - Muscle Gain: TDEE + 300 kcal
+    5. Macro Waterfall:
+       - Net Carbs: Fixed at 30g (standard keto induction level).
+       - Protein: Fixed at 1g per lb of body weight (to preserve lean mass).
+       - Fat: Fills the remaining calorie budget.
+
+    Payload: {"age": int, "gender": "male|female", "weight_lbs": float, "height_inches": float, "activity_level": "...", "goal": "..."}
+    Response: {"status": "success", "calculated_targets": {...}}
+    """
     data = request.data
     try:
         age_val = data.get('age', 0)
@@ -624,6 +785,10 @@ def submit_onboarding(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
+    """
+    Registers a new user and returns an authentication token.
+    Grants 5 free AI tokens to the new user profile by default.
+    """
     username = request.data.get('username')
     password = request.data.get('password')
     if not username or not password:
@@ -649,6 +814,9 @@ def register(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
+    """
+    Authenticates user credentials and returns an API token.
+    """
     username = request.data.get('username')
     password = request.data.get('password')
     user = authenticate(username=username, password=password)
@@ -660,6 +828,10 @@ def login_view(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_exercise_max(request):
+    """
+    Retrieves the Personal Best (max weight and reps) for a specific exercise.
+    Used for the progress badges in the UI.
+    """
     name = request.query_params.get('name', '')
     if not name:
         return Response({"max_weight": 0, "max_reps": 0})
@@ -676,6 +848,11 @@ def get_exercise_max(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_workout_history(request):
+    """
+    Retrieves workout history in two formats:
+    1. 'graph' mode: Returns max weight per date for charting progress.
+    2. Default: Returns full log history grouped by date for SectionList display.
+    """
     exercise = request.query_params.get('exercise')
     req_mode = request.query_params.get('mode')
 
@@ -715,6 +892,9 @@ def get_workout_history(request):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def profile_view(request):
+    """
+    Retrieves or updates user profile biometrics and activity preferences.
+    """
     try:
         profile, created = UserProfile.objects.get_or_create(user=request.user)
         if request.method == 'GET':
@@ -742,6 +922,10 @@ def profile_view(request):
 @api_view(['POST', 'GET'])
 @permission_classes([IsAuthenticated])
 def biometrics_view(request):
+    """
+    Manages historical biometric snapshots (weight and BMI).
+    Used for long-term health trend visualization.
+    """
     if request.method == 'POST':
         try:
             weight_lbs = float(request.data.get('weight_lbs', 0))

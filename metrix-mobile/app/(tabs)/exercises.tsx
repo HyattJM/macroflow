@@ -16,6 +16,16 @@ import { ExerciseCard, Exercise } from '../../src/components/workout/ExerciseCar
 import { useAppTheme } from '../../src/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
+/**
+ * ExercisesScreen serves as a visual dictionary of all available exercises.
+ * 
+ * Logic Rationale:
+ * - Real-time Filtering: Uses `useMemo` to filter the `exercises` array based on `searchQuery` 
+ *   and `selectedMuscle` without re-rendering the entire list unless the data or criteria change.
+ * - Performance Tuning: The `FlatList` is optimized with `initialNumToRender` and `windowSize` 
+ *   to handle the 140+ GIFs without crashing the main thread.
+ * - Data Shape: Expects an array of objects: { id: number, name: string, gif_url: string, muscle_group: { name: string } }.
+ */
 export const ExercisesScreen = () => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,6 +34,10 @@ export const ExercisesScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const { currentThemeColors } = useAppTheme();
 
+  /**
+   * Dynamically extracts unique muscle groups from the fetched exercise list.
+   * Prepends 'All' to allow resetting filters.
+   */
   const categories = useMemo(() => {
     const muscles = exercises
       .map(ex => ex.muscle_group?.name)
@@ -32,6 +46,10 @@ export const ExercisesScreen = () => {
     return ['All', ...uniqueMuscles];
   }, [exercises]);
 
+  /**
+   * Filters exercises based on search query and selected muscle group.
+   * Case-insensitive matching is applied to both exercise names and muscle group names.
+   */
   const filteredExercises = useMemo(() => {
     return exercises.filter(ex => {
       // 1. Filter by Muscle Group
@@ -47,6 +65,9 @@ export const ExercisesScreen = () => {
     });
   }, [exercises, searchQuery, selectedMuscle]);
 
+  /**
+   * Fetches the master exercise list from the Django backend.
+   */
   const fetchExercises = async () => {
     try {
       setLoading(true);
@@ -96,6 +117,7 @@ export const ExercisesScreen = () => {
         <Text style={[styles.title, { color: '#FFFFFF' }]}>Exercise Database</Text>
         <Text style={[styles.subtitle, { color: '#8e8e93' }]}>{exercises.length} Exercises Available</Text>
         
+        {/* Search Bar */}
         <View style={[styles.searchContainer, { backgroundColor: '#2A2A2A' }]}>
           <Ionicons name="search" size={20} color="#8e8e93" style={styles.searchIcon} />
           <TextInput
@@ -113,6 +135,7 @@ export const ExercisesScreen = () => {
           )}
         </View>
 
+        {/* Category Pills */}
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
@@ -143,6 +166,8 @@ export const ExercisesScreen = () => {
           })}
         </ScrollView>
       </View>
+      
+      {/* Exercise List */}
       <FlatList
         data={filteredExercises}
         keyExtractor={(item) => item.id?.toString() || item.name}

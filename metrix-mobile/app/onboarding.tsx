@@ -5,6 +5,10 @@ import { useAuth } from '../src/context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
+/**
+ * Metadata for activity level selection.
+ * Used to calculate the TDEE multiplier on the backend.
+ */
 const ACTIVITY_LEVELS = [
   { label: 'Sedentary', value: 'sedentary', desc: 'Little to no exercise' },
   { label: 'Lightly Active', value: 'lightly active', desc: '1-3 days/week exercise' },
@@ -13,12 +17,25 @@ const ACTIVITY_LEVELS = [
   { label: 'Extra Active', value: 'extra active', desc: 'Hard daily exercise & physical job' },
 ];
 
+/**
+ * Metadata for user goal selection.
+ * Used to adjust the final calorie budget (surplus or deficit).
+ */
 const GOALS = [
   { label: 'Lose Weight', value: 'lose weight', desc: 'Focus on fat loss' },
   { label: 'Maintain', value: 'maintain', desc: 'Keep current weight' },
   { label: 'Gain Muscle', value: 'gain muscle', desc: 'Focus on lean mass' },
 ];
 
+/**
+ * OnboardingScreen handles the initial data collection for new users.
+ * 
+ * Logic Rationale:
+ * - Multi-Step Flow: Breaks down complex physiological data entry into 5 digestible steps.
+ * - Field Mapping: Frontend values are mapped to strict snake_case keys (e.g. 'lightly_active') 
+ *   required by the Django REST API.
+ * - State Management: Tracks all user inputs in a single `form` object for easy payload construction.
+ */
 export default function OnboardingScreen() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
@@ -32,6 +49,9 @@ export default function OnboardingScreen() {
   const [loading, setLoading] = useState(false);
   const { completeOnboarding } = useAuth();
 
+  /**
+   * Validates current step inputs before advancing.
+   */
   const handleNext = () => {
     if (step === 1 && (!form.age || !form.gender)) return Alert.alert('Missing Info', 'Please provide age and gender.');
     if (step === 2 && (!form.weight_lbs || !form.height_inches)) return Alert.alert('Missing Info', 'Please provide weight and height.');
@@ -41,10 +61,17 @@ export default function OnboardingScreen() {
     if (step < 5) setStep(step + 1);
   };
 
+  /**
+   * Navigates to the previous step.
+   */
   const handleBack = () => {
     if (step > 1) setStep(step - 1);
   };
 
+  /**
+   * Submits the gathered data to the /submit-onboarding/ endpoint.
+   * On success, updates the global AuthContext to finalize the user's registration state.
+   */
   const handleSubmit = async () => {
     setLoading(true);
     
@@ -86,6 +113,9 @@ export default function OnboardingScreen() {
     }
   };
 
+  /**
+   * Renders the progress bar dots.
+   */
   const renderProgress = () => (
     <View style={styles.progressContainer}>
       {[1, 2, 3, 4, 5].map((s) => (

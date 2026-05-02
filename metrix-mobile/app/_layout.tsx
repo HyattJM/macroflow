@@ -10,10 +10,24 @@ import Toast from 'react-native-toast-message';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { ThemeProvider, useAppTheme } from '../src/context/ThemeContext';
 
+/**
+ * Expo Router configuration settings.
+ */
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
+/**
+ * RootLayoutNav handles the core navigation logic, including authentication 
+ * and onboarding redirects.
+ * 
+ * Logic Rationale:
+ * - Redirection: Uses a multi-state check (isAuthenticated, isOnboardingComplete) 
+ *   to ensure users are always in the correct app section.
+ * - Non-Authenticated Users: Forced to /login if they attempt to access restricted segments.
+ * - Authenticated Users: Redirected to /onboarding if their profile is incomplete, 
+ *   otherwise sent to the main (tabs) dashboard.
+ */
 function RootLayoutNav() {
   const { isAuthenticated, isOnboardingComplete, isLoading } = useAuth();
   const router = useRouter();
@@ -56,6 +70,10 @@ function RootLayoutNav() {
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+/**
+ * ToastWrapper provides custom-styled dynamic notifications.
+ * It is theme-aware and responds to changes in the global ThemeContext.
+ */
 const ToastWrapper = () => {
   const { currentThemeColors } = useAppTheme();
   
@@ -77,6 +95,11 @@ const ToastWrapper = () => {
   return <Toast config={toastConfig} />;
 };
 
+/**
+ * RootLayout is the entry point for the application.
+ * It wraps the app in the necessary providers for authentication, 
+ * theming, and gesture handling.
+ */
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
