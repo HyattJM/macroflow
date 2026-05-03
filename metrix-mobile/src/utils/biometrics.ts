@@ -1,5 +1,5 @@
 import { initialize, requestPermission, readRecords, getGrantedPermissions, openHealthConnectSettings } from 'react-native-health-connect';
-import Constants from 'expo-constants';
+
 
 /**
  * Initializes the Health Connect SDK so the native module is ready for later use.
@@ -15,10 +15,7 @@ import Constants from 'expo-constants';
  * button press on the health screen) after the Activity is fully active.
  */
 export const setupHealthConnect = async () => {
-  if (Constants.appOwnership === 'expo') {
-    console.log('Bypassing Health Connect in Expo Go');
-    return true;
-  }
+
 
   try {
     const isInitialized = await initialize();
@@ -48,11 +45,7 @@ export const syncHealthConnectData = async (): Promise<{
   steps: number;
   heartRate: string;
 } | null> => {
-  if (Constants.appOwnership === 'expo') {
-    console.log('[HealthConnect] Skipping sync in Expo Go — returning mock data.');
-    // Return plausible mock data so UI development still works in Expo Go.
-    return { steps: 4200, heartRate: '72' };
-  }
+
 
   try {
     // ── Step 1: Request permissions (safe here — called from a user gesture) ──
@@ -115,7 +108,7 @@ export const syncHealthConnectData = async (): Promise<{
       }
     }
 
-    console.log(`[HealthConnect] Sync complete — Steps: ${totalSteps}, HR: ${heartRate} BPM`);
+    console.log(`[HEALTH CONNECT LIVE DATA] Steps: ${totalSteps}, HR: ${heartRate}`);
     return { steps: totalSteps, heartRate };
   } catch (error) {
     console.error('[HealthConnect] Sync failed:', error);

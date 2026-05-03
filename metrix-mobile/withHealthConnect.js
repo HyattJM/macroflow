@@ -1,4 +1,4 @@
-const { withAndroidManifest, withDangerousMod } = require('@expo/config-plugins');
+const { withAndroidManifest, withDangerousMod, withMainActivity } = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
@@ -41,6 +41,79 @@ module.exports = function withHealthConnect(config) {
       });
     }
 
+    const newPrivacyPolicyName = 'health_permissions.PRIVACY_POLICY_URL';
+    const alreadyHasNewPrivacyPolicy = app['meta-data'].some(
+      (m) => m.$['android:name'] === newPrivacyPolicyName
+    );
+    if (!alreadyHasNewPrivacyPolicy) {
+      app['meta-data'].push({
+        $: {
+          'android:name': newPrivacyPolicyName,
+          'android:value': 'https://logiclayersupply.com/policies/privacy-policy',
+        },
+      });
+    }
+
+    if (app.activity) {
+      const mainActivity = app.activity.find(
+        (a) => a.$['android:name'] === '.MainActivity'
+      );
+      if (mainActivity) {
+        if (!mainActivity['intent-filter']) {
+          mainActivity['intent-filter'] = [];
+        }
+
+        let hasAction = false;
+        for (const filter of mainActivity['intent-filter']) {
+          if (filter.action) {
+            if (filter.action.some(a => a.$['android:name'] === 'androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE')) {
+              hasAction = true;
+              break;
+            }
+          }
+        }
+
+        if (!hasAction) {
+          mainActivity['intent-filter'].push({
+            action: [
+              {
+                $: {
+                  'android:name': 'androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE',
+                },
+              },
+            ],
+          });
+        }
+      }
+    }
+
+    if (!app['activity-alias']) {
+      app['activity-alias'] = [];
+    }
+    const hasActivityAlias = app['activity-alias'].some(
+      (a) => a.$['android:name'] === 'ViewPermissionUsageActivity'
+    );
+    if (!hasActivityAlias) {
+      app['activity-alias'].push({
+        $: {
+          'android:name': 'ViewPermissionUsageActivity',
+          'android:exported': 'true',
+          'android:targetActivity': '.MainActivity',
+          'android:permission': 'android.permission.START_VIEW_PERMISSION_USAGE',
+        },
+        'intent-filter': [
+          {
+            action: [
+              { $: { 'android:name': 'android.intent.action.VIEW_PERMISSION_USAGE' } }
+            ],
+            category: [
+              { $: { 'android:name': 'android.intent.category.HEALTH_PERMISSIONS' } }
+            ]
+          }
+        ]
+      });
+    }
+
     return config;
   });
 
@@ -63,6 +136,28 @@ module.exports = function withHealthConnect(config) {
       return config;
     },
   ]);
+
+  config = withMainActivity(config, (config) => {
+    let contents = config.modResults.contents;
+
+    const importStatement = 'import dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate';
+    if (!contents.includes(importStatement)) {
+      contents = contents.replace(
+        /^package [\w\.]+;?/m,
+        `$&\n\n${importStatement}`
+      );
+    }
+
+    if (!contents.includes('HealthConnectPermissionDelegate.setPermissionDelegate(this)')) {
+      contents = contents.replace(
+        /(\s*)(super\.onCreate\()/,
+        `$1HealthConnectPermissionDelegate.setPermissionDelegate(this)$1$2`
+      );
+    }
+
+    config.modResults.contents = contents;
+    return config;
+  });
 
   return config;
 };
