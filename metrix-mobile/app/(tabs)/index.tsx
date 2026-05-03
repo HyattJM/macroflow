@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '../../src/context/ThemeContext';
 import { EXERCISE_DATABASE } from './workout';
-import { setupHealthConnect } from '../../src/utils/biometrics';
+import { setupHealthConnect, syncHealthConnectData } from '../../src/utils/biometrics';
 import Constants from 'expo-constants';
 import { WorkoutCalendarHistory } from '../../src/components/workout/WorkoutCalendarHistory';
 
@@ -99,6 +99,39 @@ export default function DashboardScreen() {
   const [ifStart, setIfStart] = useState('21:00');
   const [ifEnd, setIfEnd] = useState('09:00');
   const [heartRate, setHeartRate] = useState('--');
+
+  // Health Connect manual sync state
+  const [healthData, setHealthData] = useState({ steps: 0, heartRate: '--' });
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  /**
+   * handleHealthSync — user-triggered Health Connect data pull.
+   * Safe to call requestPermission here because it runs inside a button press
+   * handler, guaranteeing the Activity's registerForActivityResult launcher
+   * is already initialized (unlike app-boot calls which caused the lateinit crash).
+   */
+  const handleHealthSync = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await syncHealthConnectData();
+      if (result) {
+        setHealthData(result);
+        Toast.show({
+          type: 'success',
+          text1: 'Health Data Synced',
+          text2: `${result.steps.toLocaleString()} steps · ${result.heartRate} BPM`,
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Sync Failed',
+          text2: 'Could not read Health Connect data. Check permissions.',
+        });
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
   
   // Biometrics
   const [currentWeight, setCurrentWeight] = useState<number | null>(null);
@@ -776,13 +809,52 @@ export default function DashboardScreen() {
         </Animated.View>
       )}
 
-      {/* Heart Rate Metric Card */}
+      {/* ── Health Connect Metrics Section ──────────────────────────────────── */}
+
+      {/* Heart Rate Card — now driven by healthData from the manual sync */}
       <Animated.View entering={FadeInUp.delay(300)} style={[styles.heartRateCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Ionicons name="heart" size={20} color={currentThemeColors.error} />
           <Text style={[styles.heartRateLabel, { color: currentThemeColors.textSecondary, marginLeft: 8 }]}>HEART RATE</Text>
         </View>
-        <Text style={[styles.heartRateValue, { color: currentThemeColors.text }]}>{heartRate} <Text style={{ fontSize: 16, fontWeight: 'normal' }}>BPM</Text></Text>
+        <Text style={[styles.heartRateValue, { color: currentThemeColors.text }]}>{healthData.heartRate} <Text style={{ fontSize: 16, fontWeight: 'normal' }}>BPM</Text></Text>
+      </Animated.View>
+
+      {/* Steps Card */}
+      <Animated.View entering={FadeInUp.delay(350)} style={[styles.heartRateCard, { backgroundColor: currentThemeColors.card, borderColor: currentThemeColors.border, ...layout.shadows.sm }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="footsteps-outline" size={20} color={currentThemeColors.primary} />
+          <Text style={[styles.heartRateLabel, { color: currentThemeColors.textSecondary, marginLeft: 8 }]}>TODAY'S STEPS</Text>
+        </View>
+        <Text style={[styles.heartRateValue, { color: currentThemeColors.text }]}>
+          {healthData.steps.toLocaleString()}
+          <Text style={{ fontSize: 16, fontWeight: 'normal' }}> steps</Text>
+        </Text>
+      </Animated.View>
+
+      {/* Sync Health Connect Button */}
+      <Animated.View entering={FadeInUp.delay(375)} style={{ marginHorizontal: 20, marginBottom: 20 }}>
+        <TouchableOpacity
+          style={[styles.syncButton, {
+            backgroundColor: isSyncing ? currentThemeColors.surface : currentThemeColors.primary + '18',
+            borderColor: currentThemeColors.primary,
+            opacity: isSyncing ? 0.7 : 1,
+          }]}
+          onPress={handleHealthSync}
+          disabled={isSyncing}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Sync Health Connect data"
+        >
+          {isSyncing ? (
+            <ActivityIndicator size="small" color={currentThemeColors.primary} />
+          ) : (
+            <Ionicons name="sync-outline" size={18} color={currentThemeColors.primary} />
+          )}
+          <Text style={[styles.syncButtonText, { color: currentThemeColors.primary }]}>
+            {isSyncing ? 'Syncing...' : 'Sync Health Connect'}
+          </Text>
+        </TouchableOpacity>
       </Animated.View>
 
       <Animated.View entering={FadeInUp.delay(400)} style={{ marginHorizontal: 0, marginBottom: 8 }}>
@@ -1100,6 +1172,20 @@ const styles = StyleSheet.create({
   heartRateValue: {
     fontSize: 24,
     fontWeight: '900',
+  },
+  syncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 8,
+  },
+  syncButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   premiumCard: {
     marginHorizontal: 20,

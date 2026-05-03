@@ -131,3 +131,6 @@ STATIC_URL = 'static/'
 AUTH_USER_MODEL = 'macroflow_api.User'
 
 CORS_ALLOW_ALL_ORIGINS = True # For development only
+
+# Google OAuth2 - Web Client ID from Google Cloud Console
+GOOGLE_WEB_CLIENT_ID = '186379443899-mkv7vv5aorscka0rhosfbhmhfl551ahl.apps.googleusercontent.com'

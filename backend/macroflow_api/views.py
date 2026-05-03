@@ -1,4 +1,8 @@
 from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from django.conf import settings
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -952,3 +956,85 @@ def biometrics_view(request):
             'date': log.created_at.strftime('%m/%d')
         } for log in logs]
         return Response({"status": "success", "data": data})
+
+
+class GoogleAuthView(APIView):
+    """
+    Verifies a Google ID token from the mobile client and issues a DRF app token.
+
+    Flow:
+    1. Receive the raw idToken from the React Native GoogleSignin.signIn() call.
+    2. Verify it with Google's public keys via google.oauth2.id_token.verify_oauth2_token().
+       This confirms the token was issued by Google for our exact client ID and has not expired.
+    3. Extract email, given_name, family_name from the verified claims.
+    4. get_or_create a Django User whose username is the email address.
+       - New users receive an auto-set unusable password (they'll always log in via Google).
+       - New users get a UserProfile seeded with 5 free AI tokens.
+    5. get_or_create a DRF Token for the user and return it alongside the email.
+
+    Request body: { "id_token": "<Google JWT string>" }
+    Response:     { "status": "success", "token": "<DRF token key>", "email": "<user email>" }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        raw_id_token = request.data.get('id_token')
+        if not raw_id_token:
+            return Response(
+                {"error": "id_token is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ── Step 1: Verify the token with Google ─────────────────────────────────
+        try:
+            id_info = id_token.verify_oauth2_token(
+                raw_id_token,
+                google_requests.Request(),
+                settings.GOOGLE_WEB_CLIENT_ID,
+            )
+        except ValueError as e:
+            # Token is invalid, expired, or not intended for this client.
+            return Response(
+                {"error": f"Invalid Google token: {e}"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # ── Step 2: Extract claims ────────────────────────────────────────────────
+        email      = id_info.get('email', '')
+        first_name = id_info.get('given_name', '')
+        last_name  = id_info.get('family_name', '')
+
+        if not email:
+            return Response(
+                {"error": "Google token did not contain an email claim."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ── Step 3: Resolve user ──────────────────────────────────────────────────
+        user, created = User.objects.get_or_create(
+            username=email,
+            defaults={
+                'email': email,
+                'first_name': first_name,
+                'last_name': last_name,
+            }
+        )
+
+        if created:
+            # Google-only accounts have no usable password.
+            user.set_unusable_password()
+            user.save()
+
+            # Seed a UserProfile with free AI tokens for new sign-ups.
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            profile.ai_tokens = 5
+            profile.save()
+
+        # ── Step 4: Issue DRF token ───────────────────────────────────────────────
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response({
+            "status": "success",
+            "token": token.key,
+            "email": user.email,
+        }, status=status.HTTP_200_OK)

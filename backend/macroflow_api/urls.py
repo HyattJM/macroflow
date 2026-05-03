@@ -58,6 +58,7 @@ urlpatterns = [
     # Auth & Onboarding
     path('register/', views.register, name='register'),
     path('login/', views.login_view, name='login'),
+    path('auth/google/', views.GoogleAuthView.as_view(), name='google-auth'),
     path('submit-onboarding/', views.submit_onboarding, name='submit-onboarding'),
     
     # User Profile & Biometrics
