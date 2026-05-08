@@ -104,7 +104,7 @@ export default function OnboardingScreen() {
     };
 
     try {
-      const response = await apiClient.post('/submit-onboarding/', payload);
+      const response = await apiClient.post('submit-onboarding/', payload);
 
       if (response.data.status === 'success') {
         await completeOnboarding();

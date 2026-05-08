@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * The base URL for the Django REST API.
  * Update this to your local machine's IP address when testing on physical devices.
  */
-export const BASE_URL = 'http://192.168.1.59:8000/api';
+export const BASE_URL = 'http://192.168.1.59:8000/api/';
 
 /**
  * Axios instance configured for the MacroFlow backend.

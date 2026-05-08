@@ -11,9 +11,11 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 
+print("Macroflow API URLs loading...")
+
 router = DefaultRouter()
 router.register(r'users', views.UserViewSet)
-router.register(r'bodyweights', views.BodyWeightViewSet)
+router.register(r'bodyweights', views.BodyWeightViewSet, basename='bodyweight')
 router.register(r'musclegroups', views.MuscleGroupViewSet)
 router.register(r'exercises', views.ExerciseViewSet)
 router.register(r'workoutsessions', views.WorkoutSessionViewSet)
@@ -23,6 +25,11 @@ router.register(r'foodlogs', views.FoodLogViewSet)
 router.register(r'waterlogs', views.WaterLogViewSet)
 
 urlpatterns = [
+    path('log-daily-weight/', views.log_bodyweight, name='log-bodyweight'),
+    path('latest-weight/', views.get_latest_weight, name='latest-weight'),
+    path('water-add/', views.add_water, name='add-water'),
+    path('water-today/', views.get_today_water, name='today-water'),
+    path('user/delete-account/', views.delete_account, name='delete-account'),
     path('', include(router.urls)),
     # Food & Nutrition
     path('scan-barcode/', views.scan_barcode, name='scan-barcode'),
@@ -37,6 +44,8 @@ urlpatterns = [
     # Workout & Fitness
     path('log-workout/', views.log_workout, name='log-workout'),
     path('workouts/', views.get_workouts, name='workouts'),
+    path('workouts/start/', views.start_workout_session, name='start-workout-session'),
+    path('workouts/<int:pk>/finish/', views.finish_workout_session, name='finish-workout-session'),
     path('workouts/<int:pk>/update/', views.update_workout_log, name='update-workout-log'),
     path('workouts/<int:pk>/delete/', views.delete_workout_log, name='delete-workout-log'),
     path('exercise-max/', views.get_exercise_max, name='exercise-max'),

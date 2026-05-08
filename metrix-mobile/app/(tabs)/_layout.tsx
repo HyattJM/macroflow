@@ -1,11 +1,13 @@
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { withLayoutContext } from 'expo-router';
+import { withLayoutContext, useRouter } from 'expo-router';
 // Navigation Version 2.0 - Settings Tab Removed
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '../../src/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import SettingsDrawer from '../../src/components/SettingsDrawer';
 
 // Create a custom Expo Router layout wrapper for Material Top Tabs
 const { Navigator } = createMaterialTopTabNavigator();
@@ -13,15 +15,17 @@ export const SwipeableTabs = withLayoutContext(Navigator);
 
 function CustomTabBar({ state, descriptors, navigation }) {
   const { currentThemeColors } = useAppTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={[
       styles.tabBar, 
       { 
-        backgroundColor: currentThemeColors.surface,
+        backgroundColor: currentThemeColors.card,
         borderTopColor: currentThemeColors.border,
         borderTopWidth: 1,
-        position: 'relative' // ensure it's not absolute
+        position: 'relative',
+        paddingBottom: Math.max(insets.bottom, 12)
       }
     ]}>
       {state.routes.map((route, index) => {
@@ -44,7 +48,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
         };
 
         const activeColor = currentThemeColors.primary;
-        const inactiveColor = currentThemeColors.textSecondary || '#8e8e93';
+        const inactiveColor = currentThemeColors.textSecondary;
         const color = isFocused ? activeColor : inactiveColor;
 
         return (
@@ -67,16 +71,61 @@ function CustomTabBar({ state, descriptors, navigation }) {
 
 export default function TabLayout() {
   const { currentThemeColors } = useAppTheme();
+  const router = useRouter();
+  const [settingsVisible, setSettingsVisible] = React.useState(false);
+  
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: currentThemeColors.background }} edges={['top']}>
+      {/* Global Header */}
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        backgroundColor: currentThemeColors.background,
+        borderBottomWidth: 1,
+        borderBottomColor: currentThemeColors.border,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {/* Favicon/Logo Placeholder */}
+          <View style={{
+            width: 36, height: 36, borderRadius: 8, backgroundColor: currentThemeColors.primary,
+            alignItems: 'center', justifyContent: 'center', marginRight: 12
+          }}>
+            <Ionicons name="fitness" size={20} color="#FFF" />
+          </View>
+          <View>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: currentThemeColors.text }}>Metrix</Text>
+            <Text style={{ fontSize: 13, color: currentThemeColors.textSecondary, fontWeight: '500' }}>{today}</Text>
+          </View>
+        </View>
+        
+        <TouchableOpacity 
+          style={{ padding: 8, backgroundColor: currentThemeColors.card, borderRadius: 12 }}
+          onPress={() => setSettingsVisible(true)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="menu" size={24} color={currentThemeColors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      <SettingsDrawer 
+        isVisible={settingsVisible} 
+        onClose={() => setSettingsVisible(false)} 
+      />
+
     <SwipeableTabs
       tabBar={props => <CustomTabBar {...props} />}
       tabBarPosition="bottom"
       keyboardDismissMode="on-drag"
+      sceneContainerStyle={{ backgroundColor: currentThemeColors.background }}
       screenOptions={{
         swipeEnabled: true,
         tabBarStyle: {
-          backgroundColor: currentThemeColors.surface,
+          backgroundColor: currentThemeColors.card,
           borderTopWidth: 1,
           borderTopColor: currentThemeColors.border,
         }
@@ -131,6 +180,7 @@ export default function TabLayout() {
         }}
       />
     </SwipeableTabs>
+    </SafeAreaView>
   );
 }
 

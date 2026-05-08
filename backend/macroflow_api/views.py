@@ -33,8 +33,10 @@ class BodyWeightViewSet(viewsets.ModelViewSet):
     ViewSet for managing BodyWeight logs.
     Used to track historical weight changes and calculate BMI trends.
     """
-    queryset = BodyWeight.objects.all()
     serializer_class = BodyWeightSerializer
+
+    def get_queryset(self):
+        return BodyWeight.objects.filter(user=self.request.user).order_by('date')
 
 class MuscleGroupViewSet(viewsets.ModelViewSet):
     """
@@ -1038,3 +1040,115 @@ class GoogleAuthView(APIView):
             "token": token.key,
             "email": user.email,
         }, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def start_workout_session(request):
+    """
+    Creates a new active session and returns the session ID.
+    """
+    session = WorkoutSession.objects.create(user=request.user, is_active=True)
+    return Response({"status": "success", "session_id": session.id})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def finish_workout_session(request, pk):
+    """
+    Accepts an array of time-stamped HR JSON objects, closes the session (end_time=now, is_active=False), and saves the time-series data.
+    """
+    try:
+        session = WorkoutSession.objects.get(pk=pk, user=request.user, is_active=True)
+    except WorkoutSession.DoesNotExist:
+        return Response({"error": "Active session not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    hr_data = request.data.get('hr_data', [])
+    
+    data = {
+        'is_active': False,
+        'end_time': timezone.now(),
+        'hr_data': hr_data
+    }
+    
+    serializer = WorkoutSessionSerializer(session, data=data, partial=True)
+    
+    if serializer.is_valid():
+        serializer.save()
+        return Response({"status": "success", "message": "Session finished and HR data saved."})
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def log_bodyweight(request):
+    """
+    Logs a new bodyweight entry for the authenticated user.
+    """
+    weight = request.data.get('weight')
+    if weight is None:
+        return Response({"error": "Weight is required"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        weight_val = float(weight)
+    except (ValueError, TypeError):
+        return Response({"error": "Invalid weight value"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    entry = BodyWeight.objects.create(user=request.user, weight=weight_val)
+    serializer = BodyWeightSerializer(entry)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_latest_weight(request):
+    """
+    Retrieves the latest bodyweight entry for the authenticated user.
+    """
+    latest = BodyWeight.objects.filter(user=request.user).order_by('-date', '-id').first()
+    if latest:
+        serializer = BodyWeightSerializer(latest)
+        return Response(serializer.data)
+    return Response({"weight": None})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_water(request):
+    """
+    Logs a new water intake entry.
+    """
+    print(f"DEBUG: add_water hit with data: {request.data}")
+    amount = request.data.get('amount')
+    if amount is None:
+        return Response({"error": "Amount is required"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    WaterLog.objects.create(user=request.user, amount_oz=int(amount))
+    return Response({"status": "success", "amount_added": amount})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_today_water(request):
+    """
+    Returns the total water consumed today.
+    """
+    print(f"DEBUG: get_today_water hit for user: {request.user}")
+    today = timezone.now().date()
+    total = WaterLog.objects.filter(
+        user=request.user, 
+        created_at__date=today
+    ).aggregate(total=Sum('amount_oz'))['total'] or 0
+    
+    return Response({"total": total})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_account(request):
+    """
+    Verifies the user's password and deletes their account.
+    """
+    password = request.data.get('password')
+    if not password:
+        return Response({"error": "Password is required"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    user = request.user
+    if not user.check_password(password):
+        return Response({"error": "Invalid password"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    user.delete()
+    return Response({"status": "Account deleted successfully"}, status=status.HTTP_200_OK)

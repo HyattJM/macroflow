@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, BodyWeight, MuscleGroup, Exercise, WorkoutSession, ExerciseSet, FoodItem, FoodLog, WaterLog, NutritionLog, WorkoutLog, SavedRecipe
+from .models import User, BodyWeight, MuscleGroup, Exercise, WorkoutSession, ExerciseSet, FoodItem, FoodLog, WaterLog, NutritionLog, WorkoutLog, SavedRecipe, HeartRateDataPoint
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -59,16 +59,36 @@ class ExerciseSetSerializer(serializers.ModelSerializer):
         model = ExerciseSet
         fields = '__all__'
 
+class HeartRateDataPointSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HeartRateDataPoint
+        fields = ['timestamp', 'bpm']
+
 class WorkoutSessionSerializer(serializers.ModelSerializer):
     """
     Serializer for a complete WorkoutSession.
     Nests all ExerciseSet entries performed during the session.
     """
     sets = ExerciseSetSerializer(many=True, read_only=True)
+    hr_data = HeartRateDataPointSerializer(many=True, required=False)
 
     class Meta:
         model = WorkoutSession
         fields = '__all__'
+        
+    def update(self, instance, validated_data):
+        hr_data = validated_data.pop('hr_data', None)
+        
+        instance = super().update(instance, validated_data)
+        
+        if hr_data is not None and not instance.is_active:
+            hr_objects = [
+                HeartRateDataPoint(session=instance, **data)
+                for data in hr_data
+            ]
+            HeartRateDataPoint.objects.bulk_create(hr_objects)
+            
+        return instance
         
 class FoodItemSerializer(serializers.ModelSerializer):
     """

@@ -90,7 +90,19 @@ class WorkoutSession(models.Model):
     Acts as a parent for multiple ExerciseSet entries.
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='workouts')
-    date = models.DateTimeField(auto_now_add=True)
+    start_time = models.DateTimeField(auto_now_add=True)
+    end_time = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+class HeartRateDataPoint(models.Model):
+    session = models.ForeignKey(WorkoutSession, on_delete=models.CASCADE, related_name='hr_data')
+    timestamp = models.DateTimeField()
+    bpm = models.IntegerField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['session', 'timestamp']),
+        ]
 
 class ExerciseSet(models.Model):
     """

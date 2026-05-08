@@ -1,14 +1,16 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import * as NavigationBar from 'expo-navigation-bar';
 import { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../src/api/apiClient';
 import Toast from 'react-native-toast-message';
 
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { ThemeProvider, useAppTheme } from '../src/context/ThemeContext';
+import { WorkoutSessionProvider } from '../src/context/WorkoutSessionContext';
 
 /**
  * Expo Router configuration settings.
@@ -33,6 +35,13 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const { currentThemeColors } = useAppTheme();
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setBackgroundColorAsync('transparent');
+      NavigationBar.setButtonStyleAsync('light');
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoading || isAuthenticated === null || (isAuthenticated && isOnboardingComplete === null)) return;
@@ -61,6 +70,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" />
         <Stack.Screen name="onboarding" />
+        <Stack.Screen name="profile" options={{ presentation: 'card', title: 'Profile' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style={isDarkBackground ? 'light' : 'dark'} />
@@ -105,8 +115,10 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <ThemeProvider>
-          <RootLayoutNav />
-          <ToastWrapper />
+          <WorkoutSessionProvider>
+            <RootLayoutNav />
+            <ToastWrapper />
+          </WorkoutSessionProvider>
         </ThemeProvider>
       </AuthProvider>
     </GestureHandlerRootView>

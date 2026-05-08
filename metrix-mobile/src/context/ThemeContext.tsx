@@ -1,7 +1,8 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { themes, ThemeColors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { layout } from '../theme/layout';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ThemeContextType {
   themeName: string;
@@ -9,6 +10,7 @@ interface ThemeContextType {
   typography: typeof typography;
   layout: typeof layout;
   setThemeName: (name: string) => void;
+  toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -18,8 +20,26 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const [themeName, setThemeName] = useState<string>('defaultDark'); 
-  const currentThemeColors = themes[themeName] || themes.defaultDark;
+  const [themeName, setThemeName] = useState<string>('oceanicDark'); 
+
+  useEffect(() => {
+    // Load theme from storage on mount
+    const loadTheme = async () => {
+      const savedTheme = await AsyncStorage.getItem('user-theme');
+      if (savedTheme && themes[savedTheme]) {
+        setThemeName(savedTheme);
+      }
+    };
+    loadTheme();
+  }, []);
+
+  const currentThemeColors = themes[themeName] || themes.oceanicDark;
+
+  const toggleTheme = async () => {
+    const newTheme = themeName === 'oceanicDark' ? 'highContrastLight' : 'oceanicDark';
+    setThemeName(newTheme);
+    await AsyncStorage.setItem('user-theme', newTheme);
+  };
 
   return (
     <ThemeContext.Provider value={{ 
@@ -27,7 +47,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       currentThemeColors, 
       typography, 
       layout, 
-      setThemeName 
+      setThemeName,
+      toggleTheme
     }}>
       {children}
     </ThemeContext.Provider>

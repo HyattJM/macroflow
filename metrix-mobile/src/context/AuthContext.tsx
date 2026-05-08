@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           // Fallback to API check: Verify if the profile has real data (age > 0)
           try {
-            const res = await apiClient.get('/daily-summary/');
+            const res = await apiClient.get('daily-summary/');
             const complete = res.data.age > 0;
             setIsOnboardingComplete(complete);
             if (complete) await AsyncStorage.setItem('has_onboarded', 'true');
