@@ -6,6 +6,7 @@ import MicroRPGCanvas from './MicroRPGCanvas';
 import DiscordWidget from './DiscordWidget';
 import IosBootTerminal from './IosBootTerminal';
 import AlienSpawnEffect from './AlienSpawnEffect';
+import SpokeCarousel from './SpokeCarousel';
 
 function AppContent() {
   const [isWarping, setIsWarping] = useState(false);
@@ -152,6 +153,9 @@ function AppContent() {
           <button onClick={() => triggerWarpTo('/bot-dashboard')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 text-left font-medium transition-colors">
             🤖 Discord Bot
           </button>
+          <button onClick={() => triggerWarpTo('/return-automator')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 text-left font-medium transition-colors">
+            📦 Return Automator
+          </button>
         </nav>
         <div className="p-6 text-xs text-slate-600 font-mono">v1.0.0</div>
       </aside>
@@ -181,7 +185,9 @@ function AppContent() {
                   Welcome to hyattjm.com. Choose an access point below to initialize a gateway.
                 </p>
 
-                <div className="grid grid-cols-2 gap-6">
+                <SpokeCarousel />
+
+                <div className="grid grid-cols-2 gap-6 mt-16">
                   {/* Card 1 */}
                   <div className="bg-zinc-950/40 backdrop-blur-lg border border-zinc-800 rounded-2xl p-8 flex flex-col hover:border-zinc-500 hover:bg-zinc-950/60 transition-all shadow-2xl">
                     <div className="text-4xl mb-6 text-emerald-400">💻</div>
@@ -324,6 +330,17 @@ function AppContent() {
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                   <h1 className="text-4xl font-bold mb-4 text-zinc-500 font-mono">[ SYSTEM OFFLINE ]</h1>
                   <p className="text-zinc-600 mb-6">The Discord Bot Dashboard deployment is currently unreachable.</p>
+                </div>
+              </div>
+            } />
+            
+            <Route path="/return-automator" element={
+              <div className="w-full h-full flex flex-col relative">
+                <button onClick={() => triggerWarpTo('/')} className="absolute top-6 right-6 z-50 px-6 py-2 bg-emerald-500/80 text-white border border-emerald-400 rounded-full font-bold tracking-widest hover:bg-emerald-600 uppercase text-sm cursor-pointer shadow-2xl backdrop-blur-md">
+                  &larr; Return to Hub
+                </button>
+                <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden">
+                  <iframe src="https://returnautomator.com" className="w-full h-full border-0" title="Return Automator Live" />
                 </div>
               </div>
             } />
