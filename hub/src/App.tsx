@@ -296,6 +296,10 @@ function AppContent() {
               key={item.path}
               onClick={() => {
                 setIsSidebarOpen(false);
+                if (item.label === 'Discord Bot') {
+                  window.location.href = 'discord://';
+                  return;
+                }
                 if (currentPath === item.path) return;
                 if (item.path === '/') navigate('/');
                 else triggerWarpTo(item.path);
