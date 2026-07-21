@@ -77,13 +77,6 @@ function GithubSidebarSection() {
 }
 
 function GithubShuttleRoute({ triggerWarpTo, repoUrl, repoName }: { triggerWarpTo: (p: string) => void, repoUrl: string, repoName: string }) {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      window.open(repoUrl, '_blank');
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [repoUrl]);
-
   return (
     <div className="w-full h-full flex flex-col relative bg-zinc-950 items-center justify-center">
       <button onClick={() => triggerWarpTo('/')} className="absolute top-6 right-6 z-50 px-6 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded font-bold tracking-widest hover:bg-emerald-500/30 uppercase text-sm cursor-pointer shadow-xl backdrop-blur-md">
@@ -92,11 +85,15 @@ function GithubShuttleRoute({ triggerWarpTo, repoUrl, repoName }: { triggerWarpT
       <div className="text-center">
         <div className="text-6xl mb-6 animate-bounce">🚀</div>
         <h1 className="text-4xl font-bold mb-4 text-emerald-400 font-mono uppercase tracking-widest">Shuttling to GitHub</h1>
-        <p className="text-zinc-400 mb-8 max-w-md mx-auto">Establishing secure connection to {repoName} infrastructure...</p>
+        <p className="text-zinc-400 mb-8 max-w-md mx-auto">Connection established to {repoName}.<br/>Awaiting final authorization...</p>
         <a 
           href={repoUrl} 
           target="_blank" 
           rel="noreferrer"
+          onClick={() => {
+            // Give the browser a moment to open the new tab before warping the current tab away
+            setTimeout(() => triggerWarpTo('/'), 100);
+          }}
           className="px-8 py-3 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded-lg font-bold tracking-[0.2em] uppercase hover:bg-emerald-500/40 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] inline-block"
         >
           Initialize Link
