@@ -276,6 +276,9 @@ function AppContent() {
           <button onClick={() => triggerWarpTo('/return-automator')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
             📦 Return Automator
           </button>
+          <button onClick={() => triggerWarpTo('/rare-finds')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
+            📚 Rare Finds
+          </button>
           
           <GithubSidebarSection />
         </nav>
@@ -401,6 +404,21 @@ function AppContent() {
                       Enter &rarr;
                     </button>
                   </div>
+
+                  {/* Card 6 (Rare Finds) */}
+                  <div className="bg-zinc-950/40 backdrop-blur-lg border border-zinc-800 rounded-2xl p-8 flex flex-col hover:border-zinc-500 hover:bg-zinc-950/60 transition-all shadow-2xl md:col-span-2 lg:col-span-1">
+                    <div className="text-4xl mb-6 text-amber-500">📚</div>
+                    <h2 className="text-2xl font-bold text-white mb-3">Rare Finds Bookstore</h2>
+                    <p className="text-zinc-200 text-sm mb-8 flex-1">
+                      Boutique e-commerce platform for unique literary discoveries.
+                    </p>
+                    <button 
+                      onClick={() => triggerWarpTo('/rare-finds')}
+                      className="text-emerald-400 text-sm font-bold tracking-widest uppercase flex items-center gap-2 hover:text-emerald-300 w-fit"
+                    >
+                      Enter &rarr;
+                    </button>
+                  </div>
                 </div>
               </div>
             } />
@@ -431,6 +449,7 @@ function AppContent() {
             } />
             
             <Route path="/bot-dashboard" element={<GithubShuttleRoute triggerWarpTo={triggerWarpTo} repoUrl="https://github.com/HyattJM/discord-bot" repoName="Discord Bot" />} />
+            <Route path="/rare-finds" element={<GithubShuttleRoute triggerWarpTo={triggerWarpTo} repoUrl="https://github.com/HyattJM/CS491-Rare-Finds" repoName="Rare Finds Bookstore" />} />
             
             <Route path="/return-automator" element={
               <div className="w-full h-full flex flex-col relative">

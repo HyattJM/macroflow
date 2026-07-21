@@ -55,6 +55,15 @@ const APPS = [
     color: 'orange-500',
     shadow: 'rgba(249,115,22,0.3)',
     path: '/return-automator'
+  },
+  {
+    id: 'rare-finds',
+    title: 'Rare Finds Bookstore',
+    description: 'Boutique e-commerce platform for unique literary discoveries.',
+    icon: '📚',
+    color: 'amber-500',
+    shadow: 'rgba(245,158,11,0.3)',
+    path: '/rare-finds'
   }
 ];
 
