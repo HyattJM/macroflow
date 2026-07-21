@@ -60,12 +60,12 @@ const GalagaBackground: React.FC = () => {
       const startX = Math.random() * (width - 200) + 100;
       const speed = Math.random() * 1.5 + 1;
       const offsetX = Math.random() * Math.PI * 2;
-      // 0, 1, 2 = Red, Green, Blue sprites we generated
-      const spriteIndex = Math.floor(Math.random() * 3); 
-      
       const squadSize = Math.floor(Math.random() * 2) + 3; // 3 or 4
       
       for (let i = 0; i < squadSize; i++) {
+        // 0, 1, 2 = Red, Green, Blue sprites we generated
+        const spriteIndex = Math.floor(Math.random() * 3); 
+
         aliens.push({
           x: startX + (i * 40), // Spacing
           y: -50 - (i * 30), // V-formation delay
@@ -154,15 +154,17 @@ const GalagaBackground: React.FC = () => {
 
         if (loadedCount === 3) {
           const img = alienImages[a.spriteIndex];
-          const sWidth = 8;
-          const sHeight = 8;
+          const sWidth = img.width;
+          const sHeight = img.height;
           
+          ctx.globalCompositeOperation = 'screen';
           ctx.drawImage(
             img,
             0, 0, sWidth, sHeight,
-            a.x - (sWidth * a.scale)/2, a.y - (sHeight * a.scale)/2,
-            sWidth * a.scale, sHeight * a.scale
+            a.x - (24 * a.scale)/2, a.y - (24 * a.scale)/2,
+            24 * a.scale, 24 * a.scale
           );
+          ctx.globalCompositeOperation = 'source-over';
         } else {
           // Fallback if image fails to load
           ctx.fillStyle = '#ef4444';

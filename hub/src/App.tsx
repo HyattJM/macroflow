@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
 import GalagaBackground from './GalagaBackground';
 import BlackHoleTransition from './BlackHoleTransition';
 import MicroRPGCanvas from './MicroRPGCanvas';
@@ -9,23 +9,62 @@ import AlienSpawnEffect from './AlienSpawnEffect';
 import SpokeCarousel from './SpokeCarousel';
 import VirtualLandscape from './VirtualLandscape';
 import YouTubeMusicWidget from './YouTubeMusicWidget';
+function DynamicAppIframe() {
+  const { repoName } = useParams();
+  const navigate = useNavigate();
+  
+  return (
+    <div className="w-full h-full flex flex-col relative z-50">
+      <button onClick={() => navigate('/')} className="absolute top-6 right-6 z-[60] px-6 py-2 bg-emerald-500/80 text-white border border-emerald-400 rounded-full font-bold tracking-widest hover:bg-emerald-600 uppercase text-sm cursor-pointer shadow-2xl backdrop-blur-md">
+        &larr; Return to Hub
+      </button>
+      <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden relative">
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-0">
+          <div className="w-8 h-8 rounded-full border-t-2 border-emerald-500 animate-spin mb-4" />
+          <p className="text-emerald-500 font-mono tracking-widest text-sm">INITIALIZING {repoName?.toUpperCase()} UPLINK...</p>
+        </div>
+        <iframe 
+          src={`https://hyattjm.github.io/${repoName}/`} 
+          className="w-full h-full border-0 absolute inset-0 z-10" 
+          title={`${repoName} Live`}
+        />
+      </div>
+    </div>
+  );
+}
 
 function GithubSidebarSection() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [repos, setRepos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const fallbackRepos = [
+    { id: 1, name: 'macroflow', html_url: 'https://github.com/HyattJM/macroflow', description: 'Agentic workflow environment' },
+    { id: 2, name: 'mk-portfolio', html_url: 'https://github.com/HyattJM/mk-portfolio', description: 'Developer portfolio' },
+    { id: 3, name: 'LogicLayerSupply', html_url: 'https://github.com/HyattJM/LogicLayerSupply', description: 'Backend architecture schemas' },
+    { id: 4, name: 'CS491-Bookstore-Product', html_url: 'https://github.com/HyattJM/CS491-Bookstore-Product', description: 'Rare finds bookstore' },
+    { id: 5, name: 'discord-bot', html_url: 'https://github.com/HyattJM/discord-bot', description: 'Discord integration bot' }
+  ];
 
   const toggleExpand = async () => {
     if (!isExpanded && repos.length === 0) {
       setLoading(true);
+      setErrorMsg(null);
       try {
         const res = await fetch('https://api.github.com/users/HyattJM/repos?sort=updated&per_page=30');
         const data = await res.json();
         if (Array.isArray(data)) {
           setRepos(data);
+        } else {
+          // Rate limited or error
+          setRepos(fallbackRepos);
+          setErrorMsg('GitHub API limit reached. Showing cached repos.');
         }
       } catch (e) {
         console.error(e);
+        setRepos(fallbackRepos);
+        setErrorMsg('Network error. Showing cached repos.');
       } finally {
         setLoading(false);
       }
@@ -48,6 +87,7 @@ function GithubSidebarSection() {
 
       {isExpanded && (
         <div className="flex flex-col gap-2 mt-3 mb-2">
+          {errorMsg && <div className="text-amber-500/80 text-[10px] px-3 font-medium">{errorMsg}</div>}
           {loading ? (
             <div className="text-slate-500 text-xs italic py-2 px-3">Initializing uplink...</div>
           ) : (
@@ -233,13 +273,13 @@ function AppContent() {
         <nav className="flex-1 p-4 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
           {[
             { path: '/', icon: '', label: 'Hub' },
-            { path: '/portfolio', icon: '💻', label: 'Portfolio' },
-            { path: '/logic-layer', icon: '⚙️', label: 'Logic Layer' },
+            { path: '/embed/mk-portfolio', icon: '💻', label: 'Portfolio' },
+            { path: '/embed/LogicLayerSupply', icon: '⚙️', label: 'Logic Layer' },
             { path: '/metrix', icon: '📊', label: 'Metrix Platform' },
             { path: '/movie-app', icon: '🎬', label: 'Movie App' },
-            { path: '/bot-dashboard', icon: '🤖', label: 'Discord Bot' },
+            { path: '/embed/discord-bot', icon: '🤖', label: 'Discord Bot' },
             { path: '/return-automator', icon: '📦', label: 'Return Automator' },
-            { path: '/rare-finds', icon: '📚', label: 'Rare Finds' },
+            { path: '/embed/CS491-Bookstore-Product', icon: '📚', label: 'Rare Finds' },
           ].map((item) => (
             <button 
               key={item.path}
@@ -278,127 +318,29 @@ function AppContent() {
         {/* Dynamic Route Content */}
         <div className="flex-1 w-full p-10 pt-20 overflow-y-auto">
           <Routes>
+            <Route path="/macroflow/*" element={<Navigate to="/" replace />} />
             <Route path="/" element={
-              <div className="max-w-4xl">
-                <h3 className="text-emerald-400 text-sm font-bold tracking-widest mb-2">CENTRAL HUB</h3>
-                <h1 className="text-5xl font-bold text-white mb-8">Select a Reality</h1>
-                <p className="text-slate-400 mb-8 max-w-xl leading-relaxed">
+              <div className="w-full flex flex-col items-center justify-center pb-20">
+                <h3 className="text-emerald-400 text-sm font-bold tracking-widest mb-2 text-center">CENTRAL HUB</h3>
+                <h1 className="text-5xl font-bold text-white mb-4 text-center drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">Select a Reality</h1>
+                <p className="text-slate-400 mb-2 max-w-xl leading-relaxed text-center">
                   Welcome to hyattjm.com. Choose an access point below to initialize a gateway.
                 </p>
 
+                <div className="w-full max-w-[1400px] flex justify-center items-center">
+                  <SpokeCarousel triggerWarpTo={triggerWarpTo} />
+                </div>
+
                 <button 
                   onClick={() => setInVR(true)}
-                  className="px-8 py-3 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded-lg font-bold tracking-[0.2em] uppercase hover:bg-emerald-500/40 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.6)] mb-12"
+                  className="px-10 py-4 mt-8 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded-lg font-bold tracking-[0.2em] uppercase hover:bg-emerald-500/40 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.6)]"
                 >
                   [ ENTER VR MATRIX ]
                 </button>
-
-                <SpokeCarousel triggerWarpTo={triggerWarpTo} />
-
-                <div className="grid grid-cols-2 gap-6 mt-16">
-                  {/* Card 1 */}
-                  <div className="bg-zinc-950/40 backdrop-blur-lg border border-zinc-800 rounded-2xl p-8 flex flex-col hover:border-zinc-500 hover:bg-zinc-950/60 transition-all shadow-2xl">
-                    <div className="text-4xl mb-6 text-emerald-400">💻</div>
-                    <h2 className="text-2xl font-bold text-white mb-3">Developer Portfolio</h2>
-                    <p className="text-zinc-200 text-sm mb-8 flex-1">
-                      Input -&gt; Reality. The core showcase of my active projects, skills, and execution history.
-                    </p>
-                    <button 
-                      onClick={() => window.open('https://github.com/HyattJM', '_blank')}
-                      className="text-emerald-400 text-sm font-bold tracking-widest uppercase flex items-center gap-2 hover:text-emerald-300 w-fit"
-                    >
-                      Enter &rarr;
-                    </button>
-                  </div>
-
-                  {/* Card 2 */}
-                  <div className="bg-zinc-950/40 backdrop-blur-lg border border-zinc-800 rounded-2xl p-8 flex flex-col hover:border-zinc-500 hover:bg-zinc-950/60 transition-all shadow-2xl">
-                    <div className="text-4xl mb-6 text-slate-300">⚙️</div>
-                    <h2 className="text-2xl font-bold text-white mb-3">Logic Layer Supply</h2>
-                    <p className="text-zinc-200 text-sm mb-8 flex-1">
-                      E-commerce utility catalog & micro-SaaS agency.
-                    </p>
-                    <button 
-                      onClick={() => window.open('https://github.com/HyattJM/logic-layer', '_blank')}
-                      className="text-emerald-400 text-sm font-bold tracking-widest uppercase flex items-center gap-2 hover:text-emerald-300 w-fit"
-                    >
-                      Enter &rarr;
-                    </button>
-                  </div>
-
-                  {/* Card 3 (Metrix) */}
-                  <div className="bg-zinc-950/40 backdrop-blur-lg border border-zinc-800 rounded-2xl p-8 flex flex-col hover:border-zinc-500 hover:bg-zinc-950/60 transition-all shadow-2xl md:col-span-2 lg:col-span-1">
-                    <div className="text-4xl mb-6 text-indigo-400">📊</div>
-                    <h2 className="text-2xl font-bold text-white mb-3">Metrix Platform</h2>
-                    <p className="text-zinc-200 text-sm mb-4 flex-1">
-                      Comprehensive health and fitness tracking system with integrated AI macro analysis.
-                    </p>
-                    <div className="flex gap-4 mt-auto">
-                      <a 
-                        href="http://localhost:8000/api/" 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="text-indigo-400 text-xs font-bold tracking-widest uppercase flex items-center gap-2 hover:text-indigo-300 bg-indigo-500/10 px-3 py-2 rounded"
-                      >
-                        API Gateway
-                      </a>
-                      <a 
-                        href="/deploy/app-release.apk" 
-                        download
-                        className="text-emerald-400 text-xs font-bold tracking-widest uppercase flex items-center gap-2 hover:text-emerald-300 bg-emerald-500/10 px-3 py-2 rounded"
-                      >
-                        Download APK
-                      </a>
-                    </div>
-                  </div>
-                  {/* Card 4 (Movie App) */}
-                  <div className="bg-zinc-950/40 backdrop-blur-lg border border-zinc-800 rounded-2xl p-8 flex flex-col hover:border-zinc-500 hover:bg-zinc-950/60 transition-all shadow-2xl">
-                    <div className="text-4xl mb-6 text-red-500">🎬</div>
-                    <h2 className="text-2xl font-bold text-white mb-3">Movie App</h2>
-                    <p className="text-zinc-200 text-sm mb-8 flex-1">
-                      React cinematic interface. Live local deployment loaded directly from GitHub source.
-                    </p>
-                    <button 
-                      onClick={() => triggerWarpTo('/movie-app')}
-                      className="text-emerald-400 text-sm font-bold tracking-widest uppercase flex items-center gap-2 hover:text-emerald-300 w-fit"
-                    >
-                      Enter &rarr;
-                    </button>
-                  </div>
-
-                  {/* Card 5 (Discord Bot) */}
-                  <div className="bg-zinc-950/40 backdrop-blur-lg border border-zinc-800 rounded-2xl p-8 flex flex-col hover:border-zinc-500 hover:bg-zinc-950/60 transition-all shadow-2xl">
-                    <div className="text-4xl mb-6 text-blue-500">🤖</div>
-                    <h2 className="text-2xl font-bold text-white mb-3">Discord Bot Dashboard</h2>
-                    <p className="text-zinc-200 text-sm mb-8 flex-1">
-                      Autonomous systems controller and ops monitoring.
-                    </p>
-                    <button 
-                      onClick={() => window.open('https://github.com/HyattJM/discord-bot', '_blank')}
-                      className="text-emerald-400 text-sm font-bold tracking-widest uppercase flex items-center gap-2 hover:text-emerald-300 w-fit"
-                    >
-                      Enter &rarr;
-                    </button>
-                  </div>
-
-                  {/* Card 6 (Rare Finds) */}
-                  <div className="bg-zinc-950/40 backdrop-blur-lg border border-zinc-800 rounded-2xl p-8 flex flex-col hover:border-zinc-500 hover:bg-zinc-950/60 transition-all shadow-2xl md:col-span-2 lg:col-span-1">
-                    <div className="text-4xl mb-6 text-amber-500">📚</div>
-                    <h2 className="text-2xl font-bold text-white mb-3">Rare Finds Bookstore</h2>
-                    <p className="text-zinc-200 text-sm mb-8 flex-1">
-                      Boutique e-commerce platform for unique literary discoveries.
-                    </p>
-                    <button 
-                      onClick={() => window.open('https://github.com/HyattJM/CS491-Bookstore-Product', '_blank')}
-                      className="text-emerald-400 text-sm font-bold tracking-widest uppercase flex items-center gap-2 hover:text-emerald-300 w-fit"
-                    >
-                      Enter &rarr;
-                    </button>
-                  </div>
-                </div>
               </div>
             } />
             
+            <Route path="/embed/:repoName" element={<DynamicAppIframe />} />
             
             <Route path="/metrix" element={
               <div className="w-full h-full flex flex-col relative">
@@ -432,6 +374,7 @@ function AppContent() {
                 </div>
               </div>
             } />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
 

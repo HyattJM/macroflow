@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReadmeModal from './ReadmeModal';
 
 const APPS = [
   {
@@ -73,22 +74,86 @@ interface SpokeCarouselProps {
 
 const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
   const [activeIndex, setActiveIndex] = useState(0);
-  const totalItems = APPS.length;
-  const radius = 450; // Z-translation distance for the 3D cylinder
-  const angle = 360 / totalItems;
+  const [appsList, setAppsList] = useState(APPS);
+  const [selectedApp, setSelectedApp] = useState<any>(null);
+  
+  useEffect(() => {
+    fetch('https://api.github.com/users/HyattJM/repos?sort=updated&per_page=50')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const newApps = [...APPS];
+          const existingUrls = new Set(APPS.map(a => a.externalUrl));
+          const existingTitles = new Set(APPS.map(a => a.title.toLowerCase()));
+          
+          const ICONS = ['📦', '⚡', '🔥', '✨', '🌟', '🚀', '🔮', '🧬'];
+          const COLORS = ['emerald', 'cyan', 'blue', 'indigo', 'violet', 'fuchsia', 'rose', 'orange', 'amber'];
+          
+          data.forEach(repo => {
+            if (!existingUrls.has(repo.html_url) && !existingTitles.has(repo.name.toLowerCase())) {
+              const randColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+              let shadow = 'rgba(255,255,255,0.3)';
+              if (randColor === 'emerald') shadow = 'rgba(52,211,153,0.3)';
+              else if (randColor === 'cyan') shadow = 'rgba(34,211,238,0.3)';
+              else if (randColor === 'blue') shadow = 'rgba(59,130,246,0.3)';
+              else if (randColor === 'indigo') shadow = 'rgba(129,140,248,0.3)';
+              else if (randColor === 'violet') shadow = 'rgba(167,139,250,0.3)';
+              else if (randColor === 'fuchsia') shadow = 'rgba(232,121,249,0.3)';
+              else if (randColor === 'rose') shadow = 'rgba(251,113,133,0.3)';
+              else if (randColor === 'orange') shadow = 'rgba(249,115,22,0.3)';
+              else if (randColor === 'amber') shadow = 'rgba(251,191,36,0.3)';
+
+              newApps.push({
+                id: repo.name,
+                title: repo.name,
+                description: repo.description || 'GitHub Repository uplink.',
+                icon: ICONS[Math.floor(Math.random() * ICONS.length)],
+                color: `${randColor}-500`,
+                shadow: shadow,
+                externalUrl: repo.html_url
+              });
+            }
+          });
+          setAppsList(newApps);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  const totalItems = appsList.length;
 
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % totalItems);
-    }, 6000);
+    }, 8000); // Slower auto-scroll so you can read the deck
     return () => clearInterval(timer);
   }, [totalItems]);
 
-  const handleDragEnd = (e: any, { offset }: any) => {
-    const swipe = offset.x;
-    if (swipe < -50) {
+  const wheelTimer = useRef<number>(0);
+
+  const handleDragEnd = (e: any, { offset, velocity }: any) => {
+    // Calculate how many cards to jump based on distance + speed
+    const momentum = offset.x + (velocity.x * 0.2); 
+    const jump = Math.round(momentum / -120); // About 120px momentum per card shift
+    
+    if (Math.abs(jump) > 0) {
+      setActiveIndex((prev) => {
+        let next = prev + jump;
+        // Handle wrap around for negative numbers
+        while (next < 0) next += totalItems;
+        return next % totalItems;
+      });
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    const now = Date.now();
+    if (now - wheelTimer.current < 40) return; // throttle wheel events
+    wheelTimer.current = now;
+
+    if (e.deltaX > 20 || e.deltaY > 20) {
       setActiveIndex((prev) => (prev + 1) % totalItems);
-    } else if (swipe > 50) {
+    } else if (e.deltaX < -20 || e.deltaY < -20) {
       setActiveIndex((prev) => (prev - 1 + totalItems) % totalItems);
     }
   };
@@ -101,49 +166,54 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
 
     const isActive = diff === 0;
     
-    // Spread them out horizontally into a fanned stack
-    const xOffset = diff * 140; // pixels spread
-    const yOffset = Math.abs(diff) * 20; // arch downwards
-    const rotation = diff * 8; // degrees fan
+    // Spread them out horizontally into a fanned stack (a deck of cards)
+    // Tighter overlap (70px) since there are many cards now
+    const xOffset = diff * 70; 
+    const yOffset = Math.abs(diff) * 15; // arch downwards slightly
+    const rotation = diff * 4; // degrees fan
 
     return {
       x: xOffset,
       y: yOffset,
       rotateZ: rotation,
-      scale: isActive ? 1.05 : 1 - Math.abs(diff) * 0.1,
-      zIndex: 10 - Math.abs(diff),
-      opacity: isActive ? 1 : 1 - Math.abs(diff) * 0.15,
+      scale: isActive ? 1.05 : Math.max(0.7, 1 - Math.abs(diff) * 0.08),
+      zIndex: 100 - Math.abs(diff),
+      opacity: isActive ? 1 : Math.max(0, 1 - Math.abs(diff) * 0.1),
     };
   };
 
-  const activeApp = APPS[activeIndex];
+  const activeApp = appsList[activeIndex];
 
   return (
-    <div className="relative w-full h-[50vh] min-h-[500px] flex flex-col items-center justify-center overflow-visible mt-10">
+    <div className="relative w-full h-[65vh] min-h-[600px] flex flex-col items-center justify-center overflow-visible mt-4 mb-16">
       
       {/* Background Ambient Glow */}
       <div 
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-[120px] opacity-20 pointer-events-none transition-colors duration-1000"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[150px] opacity-25 pointer-events-none transition-colors duration-1000"
         style={{ backgroundColor: activeApp.shadow.replace('0.3', '1') }}
       />
 
-      {/* 2D Fanned Stack Container */}
-      <div className="relative w-full max-w-5xl h-[400px]">
+      {/* 2D Fanned Stack Container (The Deck) */}
+      <div className="relative w-full max-w-[1200px] h-[450px] flex justify-center items-center">
         <motion.div 
           className="absolute w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing"
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.2}
           onDragEnd={handleDragEnd}
+          onWheel={handleWheel}
         >
-          {APPS.map((app, index) => {
+          {appsList.map((app, index) => {
             const style = getCardStyle(index);
             const isActive = index === activeIndex;
+
+            // Only render cards that are somewhat visible to keep the DOM clean when there are 50+ repos
+            if (style.opacity <= 0.01) return null;
 
             return (
               <motion.div
                 key={app.id}
-                className="absolute top-1/2 left-1/2 w-[280px] h-[360px] -mt-[180px] -ml-[140px] rounded-2xl flex flex-col items-center justify-center"
+                className="absolute top-1/2 left-1/2 w-[340px] h-[450px] -mt-[225px] -ml-[170px] rounded-3xl flex flex-col items-center justify-center"
                 style={{
                   zIndex: style.zIndex,
                 }}
@@ -155,23 +225,19 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
                   opacity: style.opacity
                 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-                onClick={() => {
+                onTap={() => {
                   if (!isActive) {
                     setActiveIndex(index);
                   } else {
-                    if (app.externalUrl) {
-                      window.open(app.externalUrl, '_blank');
-                    } else if (app.path) {
-                      triggerWarpTo(app.path);
-                    }
+                    setSelectedApp(app);
                   }
                 }}
               >
                 {/* The visual card itself */}
                 <div 
-                  className={`w-full h-full rounded-2xl border flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-xl transition-all duration-700 shadow-2xl ${isActive ? 'border-' + app.color.split('-')[0] + '-500 cursor-pointer hover:bg-zinc-900/90' : 'border-zinc-800'}`}
+                  className={`w-full h-full rounded-3xl border flex flex-col items-center justify-center bg-zinc-950/90 backdrop-blur-xl transition-all duration-700 shadow-2xl ${isActive ? 'border-' + app.color.split('-')[0] + '-500 cursor-pointer hover:bg-zinc-900' : 'border-zinc-800'}`}
                   style={{
-                    boxShadow: isActive ? `0 0 40px ${app.shadow}` : 'none',
+                    boxShadow: isActive ? `0 0 50px ${app.shadow}` : '0 0 10px rgba(0,0,0,0.5)',
                   }}
                 >
                   <div className="text-8xl mb-6 drop-shadow-2xl">{app.icon}</div>
@@ -184,7 +250,7 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
       </div>
 
       {/* Decoupled Text Description */}
-      <div className="absolute bottom-[-20px] w-full max-w-xl mx-auto text-center h-24 flex flex-col items-center justify-center z-20 pointer-events-none">
+      <div className="absolute bottom-[-40px] w-full max-w-xl mx-auto text-center h-24 flex flex-col items-center justify-center z-20 pointer-events-none">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeIndex}
@@ -204,6 +270,29 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
         </AnimatePresence>
       </div>
 
+      {/* Embedded Matrix Windows */}
+      <ReadmeModal 
+        app={selectedApp} 
+        isOpen={!!selectedApp} 
+        onClose={() => setSelectedApp(null)} 
+        onLaunch={() => {
+          if (selectedApp?.path) {
+            triggerWarpTo(selectedApp.path);
+          } else if (selectedApp?.externalUrl && selectedApp.externalUrl.includes('github.com')) {
+            const parts = selectedApp.externalUrl.split('github.com/');
+            if (parts.length > 1) {
+              const repoPath = parts[1].replace(/\/$/, '');
+              const repoName = repoPath.split('/')[1] || repoPath;
+              triggerWarpTo(`/embed/${repoName}`);
+            } else {
+              window.open(selectedApp.externalUrl, '_blank');
+            }
+          } else if (selectedApp?.externalUrl) {
+            window.open(selectedApp.externalUrl, '_blank');
+          }
+          setSelectedApp(null);
+        }}
+      />
     </div>
   );
 };

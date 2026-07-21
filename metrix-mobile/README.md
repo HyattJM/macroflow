@@ -1,50 +1,72 @@
-# Welcome to your Expo app 👋
+<div align="center">
+  <img src="https://img.shields.io/badge/System-Metrix--Mobile-00ff00?style=for-the-badge&logo=matrix&logoColor=black" alt="Metrix Mobile" />
+  <h1>💊 Metrix Mobile</h1>
+  <p><em>"Wake up, Neo. Your health data has you."</em></p>
+  <p><strong>A comprehensive cyber-enhanced health and fitness tracking system with integrated AI macro analysis.</strong></p>
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+  [![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](#)
+  [![Expo](https://img.shields.io/badge/Expo-1B1F23?style=for-the-badge&logo=expo&logoColor=white)](#)
+  [![AI Macro Analysis](https://img.shields.io/badge/AI-Macro%20Analysis-8A2BE2?style=for-the-badge&logo=openai&logoColor=white)](#)
+  [![Health Connect](https://img.shields.io/badge/Health_Connect-4285F4?style=for-the-badge&logo=googlefit&logoColor=white)](#)
+</div>
 
-## Get started
+---
 
-1. Install dependencies
+## 🖧 The Construct (Overview)
+**Metrix Mobile** is the bridge between your physical vessel and the digital grid. Syncing directly with your vital metrics via Android Health Connect, it decodes the raw signals of your workouts and dietary macros using advanced AI. 
 
+> **NEW DEPLOYMENT:** Includes the latest **Hub Matrix Modal integration**—a seamless neural interface for accessing core health hubs instantly.
+
+## ⚙️ The Architecture (Tech Stack)
+Built with bleeding-edge stack protocols:
+- **Framework:** React Native / Expo (`expo-router` file-based routing)
+- **Neural Engine:** AI Macro Analysis Integration
+- **Biometric Sync:** `react-native-health-connect`
+- **Visual Interface:** `react-native-reanimated`, `react-native-chart-kit`
+- **Authentication:** Google Sign-in & Contextual Session Management
+- **Global State:** React Context (`AuthProvider`, `ThemeProvider`, `WorkoutSessionProvider`)
+
+## 🛠️ Loading the Program (Installation)
+Ready to jack in? Initialize the local repository.
+
+### Prerequisites
+- Node.js LTS 
+- Expo CLI (`npm install -g expo-cli`)
+- Android Studio / Xcode (for emulation)
+
+### Boot Sequence
+1. **Clone the repository** (if you haven't already):
+   ```bash
+   git clone <repository-url>
+   cd metrix-mobile
+   ```
+
+2. **Install Node modules**:
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. **Start the Metro Bundler**:
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. **Connect your device**:
+   - Scan the QR code using the **Expo Go** app (Android) or the Camera app (iOS).
+   - Or press `a` to load into the Android Emulator, `i` for iOS Simulator.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+## 📂 System Directory (Project Structure)
+```
+/app          # Expo Router neural pathways (Tabs, Modals, Screens)
+/src/api      # Axios instances and neural network APIs
+/src/context  # Global state (Auth, Theme, Workouts)
+/src/hooks    # Custom React cyber-implants
+/src/theme    # Cyberpunk / Dark / Light aesthetic configs
+/components   # Reusable UI constructs
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🛡️ License
+Classified. For operator eyes only. (MIT License)
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
+*“There is no spoon... only macros.”* 🥄
