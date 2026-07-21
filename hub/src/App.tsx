@@ -8,6 +8,7 @@ import IosBootTerminal from './IosBootTerminal';
 import AlienSpawnEffect from './AlienSpawnEffect';
 import SpokeCarousel from './SpokeCarousel';
 import VirtualLandscape from './VirtualLandscape';
+import YouTubeMusicWidget from './YouTubeMusicWidget';
 
 function GithubSidebarSection() {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -185,6 +186,7 @@ function AppContent() {
       {hasStarted && (
         <>
           <DiscordWidget />
+          <YouTubeMusicWidget />
           <IosBootTerminal />
         </>
       )}
