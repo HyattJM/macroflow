@@ -6,6 +6,9 @@ import MicroRPGCanvas from './MicroRPGCanvas';
 import DiscordWidget from './DiscordWidget';
 import IosBootTerminal from './IosBootTerminal';
 import AlienSpawnEffect from './AlienSpawnEffect';
+import SpokeCarousel from './SpokeCarousel';
+import VirtualLandscape from './VirtualLandscape';
+
 function GithubSidebarSection() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [repos, setRepos] = useState<any[]>([]);
