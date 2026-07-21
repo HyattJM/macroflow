@@ -126,7 +126,7 @@ const sidebarItems = [
   { path: '/movie-app', label: 'Movie App', icon: '🎬' },
   { path: '/return-automator', label: 'Return Automator', icon: '📦' },
   { path: '/rarefinds', label: 'Rare Finds Bookstore', icon: '📚' },
-  { path: '/embed/discord-bot', label: 'Discord Bot', icon: '🤖' }
+  { path: '/discord-bot', label: 'Discord Bot', icon: '🤖' }
 ];
 
 
@@ -371,7 +371,7 @@ function AppContent() {
                   &larr; Return to Hub
                 </button>
                 <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden">
-                  <iframe src="https://metrix-live-24-production.up.railway.app" className="w-full h-full border-0" title="Metrix Platform Live" />
+                  <iframe src="https://metrix-live-24-production-a88d.up.railway.app" className="w-full h-full border-0" title="Metrix Platform Live" />
                 </div>
               </div>
             } />
@@ -382,7 +382,7 @@ function AppContent() {
                   &larr; Return to Hub
                 </button>
                 <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden">
-                  <iframe src="https://movie-app-live-24-production.up.railway.app" className="w-full h-full border-0" title="Movie App Live" />
+                  <iframe src="https://movie-app-live-24-production-4043.up.railway.app" className="w-full h-full border-0" title="Movie App Live" />
                 </div>
               </div>
             } />
@@ -404,6 +404,16 @@ function AppContent() {
                 </button>
                 <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden">
                   <iframe src="https://return-automator-live-24-production.up.railway.app" className="w-full h-full border-0" title="Return Automator Live" />
+                </div>
+              </div>
+            } />
+            <Route path="/discord-bot" element={
+              <div className="w-full h-full flex flex-col relative bg-zinc-950">
+                <button onClick={() => triggerWarpTo('/')} className="absolute top-6 right-6 z-50 px-6 py-2 bg-emerald-500/80 text-white border border-emerald-400 rounded-full font-bold tracking-widest hover:bg-emerald-600 uppercase text-sm cursor-pointer shadow-2xl backdrop-blur-md">
+                  &larr; Return to Hub
+                </button>
+                <div className="flex-1 w-full h-full flex items-center justify-center p-12">
+                  <DiscordWidget />
                 </div>
               </div>
             } />
