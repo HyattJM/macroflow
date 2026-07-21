@@ -133,6 +133,7 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const playlist = ["/music.mp3", "/song1.mp3", "/song2.mp3"];
 
@@ -182,8 +183,8 @@ function AppContent() {
   return (
     <div className="relative w-full h-screen font-sans bg-transparent text-white overflow-hidden flex">
       {!hasStarted && (
-        <div className="absolute inset-0 z-[100] bg-black flex flex-col items-center justify-center">
-            <h1 className="text-4xl font-bold text-white mb-8 tracking-widest uppercase">System Offline</h1>
+        <div className="absolute inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4 text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-8 tracking-widest uppercase">System Offline</h1>
             <button 
                 onClick={handleStart}
                 className="px-8 py-4 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded-lg font-bold tracking-[0.2em] uppercase hover:bg-emerald-500/40 hover:scale-105 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.6)]"
@@ -224,11 +225,11 @@ function AppContent() {
       
       {/* Overlay Widgets */}
       {hasStarted && (
-        <>
+        <div className="hidden md:block">
           <DiscordWidget />
           <YouTubeMusicWidget />
           <IosBootTerminal />
-        </>
+        </div>
       )}
       
       {/* Background Audio */}
@@ -239,7 +240,7 @@ function AppContent() {
       />
 
       {/* Audio Controls (Bottom Left) */}
-      <div className="absolute bottom-8 left-8 flex gap-3 z-50 pointer-events-auto">
+      <div className="absolute bottom-4 left-4 md:bottom-8 md:left-8 flex gap-2 md:gap-3 z-[60] pointer-events-auto">
         <button 
           onClick={() => setIsMuted(!isMuted)}
           className="w-12 h-12 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md rounded-full flex items-center justify-center text-xl border border-slate-700/50 transition-colors shadow-lg"
@@ -255,8 +256,16 @@ function AppContent() {
         </button>
       </div>
 
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[65] md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Left Sidebar (Matches Original) */}
-      <aside className="w-[240px] h-full bg-[#0a0a0f] border-r border-slate-800/50 flex flex-col z-20 flex-shrink-0 pointer-events-auto">
+      <aside className={`fixed md:relative top-0 left-0 w-[240px] h-full bg-[#0a0a0f] border-r border-slate-800/50 flex flex-col z-[70] md:z-20 flex-shrink-0 pointer-events-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-4 border-b border-slate-800/50 flex flex-col gap-3 bg-zinc-950/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center p-2 overflow-hidden shrink-0">
@@ -284,6 +293,7 @@ function AppContent() {
             <button 
               key={item.path}
               onClick={() => {
+                setIsSidebarOpen(false);
                 if (currentPath === item.path) return;
                 if (item.path === '/') navigate('/');
                 else triggerWarpTo(item.path);
@@ -305,25 +315,36 @@ function AppContent() {
       <main className="flex-1 relative z-20 h-full flex flex-col">
         
         {/* Top Header */}
-        <header className="h-20 w-full flex items-center justify-between px-10">
-          <div className="text-sm font-bold tracking-widest text-slate-300">
-            HYATTJM // <span className="text-emerald-400">HUB</span>
+        <header className="h-16 md:h-20 w-full flex items-center justify-between px-4 md:px-10 shrink-0 border-b border-slate-800/30 md:border-none">
+          <div className="flex items-center gap-4">
+            <button 
+              className="md:hidden text-emerald-400 p-2 hover:bg-emerald-500/10 rounded-md transition-colors"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div className="text-sm font-bold tracking-widest text-slate-300">
+              HYATTJM // <span className="text-emerald-400">HUB</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+          <div className="flex items-center gap-2 text-[10px] md:text-xs font-mono text-slate-400">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            SYSTEM ONLINE
+            <span className="hidden sm:inline">SYSTEM ONLINE</span>
+            <span className="sm:hidden">ONLINE</span>
           </div>
         </header>
 
         {/* Dynamic Route Content */}
-        <div className="flex-1 w-full p-10 pt-20 overflow-y-auto">
+        <div className="flex-1 w-full p-4 pt-8 md:p-10 md:pt-20 overflow-y-auto custom-scrollbar">
           <Routes>
             <Route path="/macroflow/*" element={<Navigate to="/" replace />} />
             <Route path="/" element={
               <div className="w-full flex flex-col items-center justify-center pb-20">
-                <h3 className="text-emerald-400 text-sm font-bold tracking-widest mb-2 text-center">CENTRAL HUB</h3>
-                <h1 className="text-5xl font-bold text-white mb-4 text-center drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">Select a Reality</h1>
-                <p className="text-slate-400 mb-2 max-w-xl leading-relaxed text-center">
+                <h3 className="text-emerald-400 text-xs md:text-sm font-bold tracking-widest mb-2 text-center">CENTRAL HUB</h3>
+                <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 text-center drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">Select a Reality</h1>
+                <p className="text-slate-400 mb-2 max-w-xl text-sm md:text-base leading-relaxed text-center px-4">
                   Welcome to hyattjm.com. Choose an access point below to initialize a gateway.
                 </p>
 

@@ -76,6 +76,13 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [appsList, setAppsList] = useState(APPS);
   const [selectedApp, setSelectedApp] = useState<any>(null);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   useEffect(() => {
     fetch('https://api.github.com/users/HyattJM/repos?sort=updated&per_page=50')
@@ -167,10 +174,10 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
     const isActive = diff === 0;
     
     // Spread them out horizontally into a fanned stack (a deck of cards)
-    // Tighter overlap (70px) since there are many cards now
-    const xOffset = diff * 70; 
-    const yOffset = Math.abs(diff) * 15; // arch downwards slightly
-    const rotation = diff * 4; // degrees fan
+    // Tighter overlap (70px desktop, 45px mobile)
+    const xOffset = diff * (isMobile ? 45 : 70); 
+    const yOffset = Math.abs(diff) * (isMobile ? 10 : 15); // arch downwards slightly
+    const rotation = diff * (isMobile ? 3 : 4); // degrees fan
 
     return {
       x: xOffset,
@@ -185,7 +192,7 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
   const activeApp = appsList[activeIndex];
 
   return (
-    <div className="relative w-full h-[65vh] min-h-[600px] flex flex-col items-center justify-center overflow-visible mt-4 mb-16">
+    <div className="relative w-full h-[55vh] md:h-[65vh] min-h-[450px] md:min-h-[600px] flex flex-col items-center justify-center overflow-visible mt-4 mb-16">
       
       {/* Background Ambient Glow */}
       <div 
@@ -213,7 +220,7 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
             return (
               <motion.div
                 key={app.id}
-                className="absolute top-1/2 left-1/2 w-[340px] h-[450px] -mt-[225px] -ml-[170px] rounded-3xl flex flex-col items-center justify-center"
+                className="absolute top-1/2 left-1/2 w-[260px] h-[360px] -mt-[180px] -ml-[130px] md:w-[340px] md:h-[450px] md:-mt-[225px] md:-ml-[170px] rounded-3xl flex flex-col items-center justify-center"
                 style={{
                   zIndex: style.zIndex,
                 }}
@@ -240,8 +247,8 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
                     boxShadow: isActive ? `0 0 50px ${app.shadow}` : '0 0 10px rgba(0,0,0,0.5)',
                   }}
                 >
-                  <div className="text-8xl mb-6 drop-shadow-2xl">{app.icon}</div>
-                  <h3 className="text-xl font-bold text-white text-center px-4 font-heading">{app.title}</h3>
+                  <div className="text-6xl md:text-8xl mb-4 md:mb-6 drop-shadow-2xl">{app.icon}</div>
+                  <h3 className="text-lg md:text-xl font-bold text-white text-center px-4 font-heading">{app.title}</h3>
                 </div>
               </motion.div>
             );
@@ -260,7 +267,7 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
             transition={{ duration: 0.3 }}
             className="flex flex-col gap-2"
           >
-            <h2 className={`text-3xl font-bold font-heading tracking-widest uppercase`} style={{ color: activeApp.shadow.replace('0.3', '1') }}>
+            <h2 className={`text-xl md:text-3xl font-bold font-heading tracking-widest uppercase`} style={{ color: activeApp.shadow.replace('0.3', '1') }}>
               {activeApp.title}
             </h2>
             <p className="text-zinc-400 text-sm font-sans tracking-wide">
