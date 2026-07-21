@@ -7,8 +7,10 @@ import DiscordWidget from './DiscordWidget';
 import IosBootTerminal from './IosBootTerminal';
 import AlienSpawnEffect from './AlienSpawnEffect';
 import SpokeCarousel from './SpokeCarousel';
+import VirtualLandscape from './VirtualLandscape';
 
 function AppContent() {
+  const [inVR, setInVR] = useState(false);
   const [isWarping, setIsWarping] = useState(false);
   const [warpTarget, setWarpTarget] = useState<string>('');
   const [isMuted, setIsMuted] = useState(true); 
@@ -93,6 +95,17 @@ function AppContent() {
 
       {/* Alien Spawn Animation */}
       {showAlienSpawn && <AlienSpawnEffect />}
+
+      {/* 3D Virtual Landscape Overlay */}
+      {inVR && (
+        <VirtualLandscape 
+          triggerWarpTo={(path) => {
+            setInVR(false);
+            triggerWarpTo(path);
+          }} 
+          onExit={() => setInVR(false)} 
+        />
+      )}
 
       <GalagaBackground />
       <BlackHoleTransition isOpen={isWarping || showInitialBlackHole} onTransitionComplete={isWarping ? handleWarpComplete : undefined} />
@@ -181,9 +194,16 @@ function AppContent() {
               <div className="max-w-4xl">
                 <h3 className="text-emerald-400 text-sm font-bold tracking-widest mb-2">CENTRAL HUB</h3>
                 <h1 className="text-5xl font-bold text-white mb-8">Select a Reality</h1>
-                <p className="text-slate-400 mb-12 max-w-xl leading-relaxed">
+                <p className="text-slate-400 mb-8 max-w-xl leading-relaxed">
                   Welcome to hyattjm.com. Choose an access point below to initialize a gateway.
                 </p>
+
+                <button 
+                  onClick={() => setInVR(true)}
+                  className="px-8 py-3 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded-lg font-bold tracking-[0.2em] uppercase hover:bg-emerald-500/40 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.6)] mb-12"
+                >
+                  [ ENTER VR MATRIX ]
+                </button>
 
                 <SpokeCarousel />
 
