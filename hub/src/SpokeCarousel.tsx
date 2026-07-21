@@ -9,6 +9,7 @@ const APPS = [
     icon: '💻',
     color: 'emerald-400',
     shadow: 'rgba(52,211,153,0.3)',
+    path: '/portfolio'
   },
   {
     id: 'logic-layer',
@@ -17,6 +18,7 @@ const APPS = [
     icon: '⚙️',
     color: 'indigo-400',
     shadow: 'rgba(129,140,248,0.3)',
+    path: '/logic-layer'
   },
   {
     id: 'metrix',
@@ -25,6 +27,7 @@ const APPS = [
     icon: '📊',
     color: 'cyan-400',
     shadow: 'rgba(34,211,238,0.3)',
+    path: '/metrix'
   },
   {
     id: 'movie-app',
@@ -33,6 +36,7 @@ const APPS = [
     icon: '🎬',
     color: 'red-500',
     shadow: 'rgba(239,68,68,0.3)',
+    path: '/movie-app'
   },
   {
     id: 'discord-bot',
@@ -41,6 +45,7 @@ const APPS = [
     icon: '🤖',
     color: 'blue-500',
     shadow: 'rgba(59,130,246,0.3)',
+    path: '/bot-dashboard'
   },
   {
     id: 'return-automator',
@@ -49,10 +54,15 @@ const APPS = [
     icon: '📦',
     color: 'orange-500',
     shadow: 'rgba(249,115,22,0.3)',
+    path: '/return-automator'
   }
 ];
 
-const SpokeCarousel = () => {
+interface SpokeCarouselProps {
+  triggerWarpTo: (path: string) => void;
+}
+
+const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const totalItems = APPS.length;
   const radius = 320; // Z-translation distance for the 3D cylinder
@@ -134,11 +144,17 @@ const SpokeCarousel = () => {
                 }}
                 animate={{ scale: style.scale }}
                 transition={{ duration: 0.7 }}
-                onClick={() => !isActive && setActiveIndex(index)}
+                onClick={() => {
+                  if (!isActive) {
+                    setActiveIndex(index);
+                  } else {
+                    triggerWarpTo(app.path);
+                  }
+                }}
               >
                 {/* The visual card itself */}
                 <div 
-                  className={`w-full h-full rounded-2xl border flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-xl transition-all duration-700 shadow-2xl ${isActive ? 'border-' + app.color.split('-')[0] + '-500' : 'border-zinc-800'}`}
+                  className={`w-full h-full rounded-2xl border flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-xl transition-all duration-700 shadow-2xl ${isActive ? 'border-' + app.color.split('-')[0] + '-500 cursor-pointer hover:bg-zinc-900/90' : 'border-zinc-800'}`}
                   style={{
                     boxShadow: isActive ? `0 0 40px ${app.shadow}` : 'none',
                     // The glossy floor reflection

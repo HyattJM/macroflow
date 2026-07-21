@@ -205,7 +205,7 @@ function AppContent() {
                   [ ENTER VR MATRIX ]
                 </button>
 
-                <SpokeCarousel />
+                <SpokeCarousel triggerWarpTo={triggerWarpTo} />
 
                 <div className="grid grid-cols-2 gap-6 mt-16">
                   {/* Card 1 */}
