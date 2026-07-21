@@ -96,9 +96,9 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
     return {
       rotateY: diff * angle,
       translateZ: radius,
-      opacity: isActive ? 1 : isAdjacent ? 0.4 : 0.1,
-      scale: isActive ? 1 : 0.85,
-      filter: isActive ? 'blur(0px)' : 'blur(4px)',
+      opacity: isActive ? 1 : isAdjacent ? 0.7 : 0.3,
+      scale: isActive ? 1 : isAdjacent ? 0.85 : 0.7,
+      filter: isActive ? 'blur(0px)' : isAdjacent ? 'blur(2px)' : 'blur(6px)',
       zIndex: isActive ? 10 : isAdjacent ? 5 : 1,
     };
   };

@@ -6,8 +6,65 @@ import MicroRPGCanvas from './MicroRPGCanvas';
 import DiscordWidget from './DiscordWidget';
 import IosBootTerminal from './IosBootTerminal';
 import AlienSpawnEffect from './AlienSpawnEffect';
-import SpokeCarousel from './SpokeCarousel';
-import VirtualLandscape from './VirtualLandscape';
+function GithubSidebarSection() {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [repos, setRepos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const toggleExpand = async () => {
+    if (!isExpanded && repos.length === 0) {
+      setLoading(true);
+      try {
+        const res = await fetch('https://api.github.com/users/HyattJM/repos?sort=updated&per_page=30');
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setRepos(data);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    setIsExpanded(!isExpanded);
+  };
+
+  return (
+    <div className="mt-2 flex flex-col w-full border-t border-slate-800/50 pt-2 flex-shrink-0 min-h-0">
+      <button 
+        onClick={toggleExpand}
+        className="flex items-center justify-between w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+          GitHub Library
+        </div>
+        <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
+      </button>
+
+      {isExpanded && (
+        <div className="flex flex-col gap-1 mt-2 pl-11 overflow-y-auto min-h-0 flex-1">
+          {loading ? (
+            <div className="text-slate-500 text-xs italic py-2">Loading repos...</div>
+          ) : (
+            repos.map((repo) => (
+              <a 
+                key={repo.id}
+                href={repo.html_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-slate-400 hover:text-emerald-400 text-xs py-1.5 block truncate transition-colors"
+                title={repo.name}
+              >
+                {repo.name}
+              </a>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function GithubShuttleRoute({ triggerWarpTo, repoUrl, repoName }: { triggerWarpTo: (p: string) => void, repoUrl: string, repoName: string }) {
   useEffect(() => {
@@ -174,8 +231,18 @@ function AppContent() {
 
       {/* Left Sidebar (Matches Original) */}
       <aside className="w-[240px] h-full bg-[#0a0a0f] border-r border-slate-800/50 flex flex-col z-20 flex-shrink-0 pointer-events-auto">
-        <div className="p-6 border-b border-slate-800/50 flex items-center justify-center">
-          <div className="text-3xl font-bold text-emerald-400 tracking-widest">H</div>
+        <div className="p-4 border-b border-slate-800/50 flex flex-col gap-3 bg-zinc-950/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center p-2 overflow-hidden shrink-0">
+              <svg viewBox="0 0 24 24" className="w-full h-full text-emerald-400 fill-current"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-bold text-slate-200 truncate">James Hyatt</span>
+              <span className="text-[10px] text-slate-400 truncate" title="jamesmichaelhyatt@google.com">
+                jamesmichaelhyatt@google.com
+              </span>
+            </div>
+          </div>
         </div>
         <nav className="flex-1 p-4 flex flex-col gap-2">
           <button onClick={() => navigate('/')} className="flex items-center gap-3 w-full p-3 rounded-lg bg-emerald-400/10 text-emerald-400 text-left font-semibold border-l-2 border-emerald-400">
@@ -193,12 +260,14 @@ function AppContent() {
           <button onClick={() => triggerWarpTo('/movie-app')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 text-left font-medium transition-colors">
             🎬 Movie App
           </button>
-          <button onClick={() => triggerWarpTo('/bot-dashboard')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 text-left font-medium transition-colors">
+          <button onClick={() => triggerWarpTo('/bot-dashboard')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors">
             🤖 Discord Bot
           </button>
-          <button onClick={() => triggerWarpTo('/return-automator')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 text-left font-medium transition-colors">
+          <button onClick={() => triggerWarpTo('/return-automator')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors">
             📦 Return Automator
           </button>
+          
+          <GithubSidebarSection />
         </nav>
         <div className="p-6 text-xs text-slate-600 font-mono">v1.0.0</div>
       </aside>
