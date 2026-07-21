@@ -46,9 +46,9 @@ function GithubSidebarSection() {
       </button>
 
       {isExpanded && (
-        <div className="flex flex-col gap-1 mt-2 pl-11 overflow-y-auto min-h-0 flex-1">
+        <div className="flex flex-col gap-2 mt-3 mb-2">
           {loading ? (
-            <div className="text-slate-500 text-xs italic py-2">Loading repos...</div>
+            <div className="text-slate-500 text-xs italic py-2 px-3">Initializing uplink...</div>
           ) : (
             repos.map((repo) => (
               <a 
@@ -56,10 +56,17 @@ function GithubSidebarSection() {
                 href={repo.html_url}
                 target="_blank"
                 rel="noreferrer"
-                className="text-slate-400 hover:text-emerald-400 text-xs py-1.5 block truncate transition-colors"
-                title={repo.name}
+                className="group flex flex-col gap-1 p-3 rounded-lg bg-zinc-950/50 hover:bg-emerald-950/30 border border-slate-800/50 hover:border-emerald-500/50 transition-all cursor-pointer shadow-lg"
               >
-                {repo.name}
+                <div className="text-slate-300 group-hover:text-emerald-400 text-sm font-bold truncate transition-colors flex items-center justify-between">
+                  {repo.name}
+                  <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+                </div>
+                {repo.description && (
+                  <div className="text-slate-500 text-[10px] line-clamp-2 leading-snug">
+                    {repo.description}
+                  </div>
+                )}
               </a>
             ))
           )}
@@ -247,26 +254,26 @@ function AppContent() {
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-4 flex flex-col gap-2">
-          <button onClick={() => navigate('/')} className="flex items-center gap-3 w-full p-3 rounded-lg bg-emerald-400/10 text-emerald-400 text-left font-semibold border-l-2 border-emerald-400">
+        <nav className="flex-1 p-4 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
+          <button onClick={() => navigate('/')} className="flex items-center gap-3 w-full p-3 rounded-lg bg-emerald-400/10 text-emerald-400 text-left font-semibold border-l-2 border-emerald-400 shrink-0">
              Hub
           </button>
-          <button onClick={() => triggerWarpTo('/portfolio')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 text-left font-medium transition-colors">
+          <button onClick={() => triggerWarpTo('/portfolio')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
             💻 Portfolio
           </button>
-          <button onClick={() => triggerWarpTo('/logic-layer')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 text-left font-medium transition-colors">
+          <button onClick={() => triggerWarpTo('/logic-layer')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
             ⚙️ Logic Layer
           </button>
-          <button onClick={() => triggerWarpTo('/metrix')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 text-left font-medium transition-colors">
+          <button onClick={() => triggerWarpTo('/metrix')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
             📊 Metrix Platform
           </button>
-          <button onClick={() => triggerWarpTo('/movie-app')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 text-left font-medium transition-colors">
+          <button onClick={() => triggerWarpTo('/movie-app')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
             🎬 Movie App
           </button>
-          <button onClick={() => triggerWarpTo('/bot-dashboard')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors">
+          <button onClick={() => triggerWarpTo('/bot-dashboard')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
             🤖 Discord Bot
           </button>
-          <button onClick={() => triggerWarpTo('/return-automator')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors">
+          <button onClick={() => triggerWarpTo('/return-automator')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
             📦 Return Automator
           </button>
           
