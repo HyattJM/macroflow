@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import GalagaBackground from './GalagaBackground';
 import BlackHoleTransition from './BlackHoleTransition';
 import MicroRPGCanvas from './MicroRPGCanvas';
@@ -115,6 +115,8 @@ function AppContent() {
   const [showAlienSpawn, setShowAlienSpawn] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = location.pathname;
 
   const playlist = ["/music.mp3", "/song1.mp3", "/song2.mp3"];
 
@@ -252,30 +254,30 @@ function AppContent() {
           </div>
         </div>
         <nav className="flex-1 p-4 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
-          <button onClick={() => navigate('/')} className="flex items-center gap-3 w-full p-3 rounded-lg bg-emerald-400/10 text-emerald-400 text-left font-semibold border-l-2 border-emerald-400 shrink-0">
-             Hub
-          </button>
-          <button onClick={() => triggerWarpTo('/portfolio')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
-            💻 Portfolio
-          </button>
-          <button onClick={() => triggerWarpTo('/logic-layer')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
-            ⚙️ Logic Layer
-          </button>
-          <button onClick={() => triggerWarpTo('/metrix')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
-            📊 Metrix Platform
-          </button>
-          <button onClick={() => triggerWarpTo('/movie-app')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
-            🎬 Movie App
-          </button>
-          <button onClick={() => triggerWarpTo('/bot-dashboard')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
-            🤖 Discord Bot
-          </button>
-          <button onClick={() => triggerWarpTo('/return-automator')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
-            📦 Return Automator
-          </button>
-          <button onClick={() => triggerWarpTo('/rare-finds')} className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg text-left font-medium transition-colors shrink-0">
-            📚 Rare Finds
-          </button>
+          {[
+            { path: '/', icon: '', label: 'Hub' },
+            { path: '/portfolio', icon: '💻', label: 'Portfolio' },
+            { path: '/logic-layer', icon: '⚙️', label: 'Logic Layer' },
+            { path: '/metrix', icon: '📊', label: 'Metrix Platform' },
+            { path: '/movie-app', icon: '🎬', label: 'Movie App' },
+            { path: '/bot-dashboard', icon: '🤖', label: 'Discord Bot' },
+            { path: '/return-automator', icon: '📦', label: 'Return Automator' },
+            { path: '/rare-finds', icon: '📚', label: 'Rare Finds' },
+          ].map((item) => (
+            <button 
+              key={item.path}
+              onClick={() => {
+                if (currentPath === item.path) return;
+                if (item.path === '/') navigate('/');
+                else triggerWarpTo(item.path);
+              }} 
+              className={`flex items-center gap-3 w-full p-3 rounded-lg text-left transition-colors shrink-0 ${currentPath === item.path ? 'bg-emerald-400/10 text-emerald-400 font-bold border-l-2 border-emerald-400' : 'text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium'}`}
+            >
+              {item.icon && <span>{item.icon}</span>}
+              {!item.icon && <span className="w-1" />}
+              {item.label}
+            </button>
+          ))}
           
           <GithubSidebarSection />
         </nav>
