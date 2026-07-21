@@ -11,13 +11,14 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "start": "vite preview --port $PORT --host 0.0.0.0"
+    "start": "node server.js"
   },
   "dependencies": {
     "@pixi/react": "^7.1.2",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@tailwindcss/typography": "^0.5.20",
+    "express": "^5.2.1",
     "framer-motion": "^12.42.2",
     "pixi.js": "^7.3.3",
     "react": "^19.2.7",
