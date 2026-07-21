@@ -126,7 +126,8 @@ const sidebarItems = [
   { path: '/movie-app', label: 'Movie App', icon: '🎬' },
   { path: '/return-automator', label: 'Return Automator', icon: '📦' },
   { path: '/rarefinds', label: 'Rare Finds Bookstore', icon: '📚' },
-  { path: '/discord-bot', label: 'Discord Bot', icon: '🤖' }
+  { path: '/discord-bot', label: 'Discord Bot', icon: '🤖' },
+  { path: '/blackjack', label: 'Blackjack (Java)', icon: '🃏' }
 ];
 
 
@@ -422,6 +423,16 @@ function AppContent() {
               </div>
             } />
             <Route path="/rarefinds" element={<RareFindsSplitView />} />
+            <Route path="/blackjack" element={
+              <div className="w-full h-full flex flex-col relative">
+                <button onClick={() => triggerWarpTo('/')} className="absolute top-6 right-6 z-50 px-6 py-2 bg-emerald-500/80 text-white border border-emerald-400 rounded-full font-bold tracking-widest hover:bg-emerald-600 uppercase text-sm cursor-pointer shadow-2xl backdrop-blur-md">
+                  &larr; Return to Hub
+                </button>
+                <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden">
+                  <iframe src="https://blackjack-java-production.up.railway.app" className="w-full h-full border-0" title="Blackjack Java Live" />
+                </div>
+              </div>
+            } />
             <Route path="/readme/:repoName" element={<GithubReadmeViewer />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
