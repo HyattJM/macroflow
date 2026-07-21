@@ -95,6 +95,46 @@ const GalagaBackground: React.FC = () => {
         ctx.fillRect(star.x, star.y, star.size, star.size);
       }
 
+      // Giant Space Invader Background Watermark
+      const invaderFrame1 = [
+        '  x     x  ',
+        '   x   x   ',
+        '  xxxxxxx  ',
+        ' xx xxx xx ',
+        'xxxxxxxxxxx',
+        'x xxxxxxx x',
+        'x x     x x',
+        '   xx xx   '
+      ];
+      const invaderFrame2 = [
+        '  x     x  ',
+        'x  x   x  x',
+        'x xxxxxxx x',
+        'xxx xxx xxx',
+        'xxxxxxxxxxx',
+        '  xxxxxxx  ',
+        '   x   x   ',
+        '  x     x  '
+      ];
+      
+      const isFrame1 = Math.floor(frameCount / 60) % 2 === 0;
+      const activeInvader = isFrame1 ? invaderFrame1 : invaderFrame2;
+      
+      const pixelSize = Math.min(width, height) / 25; // Scale pixel size to screen
+      const invaderWidth = 11 * pixelSize;
+      const invaderHeight = 8 * pixelSize;
+      const startX = (width - invaderWidth) / 2;
+      const startY = (height - invaderHeight) / 2 + Math.sin(frameCount * 0.02) * 30; // Slow breathing float
+
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.04)'; // Very subtle emerald glow
+      for (let row = 0; row < activeInvader.length; row++) {
+        for (let col = 0; col < activeInvader[row].length; col++) {
+          if (activeInvader[row][col] === 'x') {
+            ctx.fillRect(startX + col * pixelSize, startY + row * pixelSize, pixelSize, pixelSize);
+          }
+        }
+      }
+
       // Spawner
       frameCount++;
       if (frameCount % 120 === 0) {
