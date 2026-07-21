@@ -27,8 +27,7 @@ const YouTubeMusicWidget = () => {
           <iframe 
             width="100%" 
             height="100%" 
-            // Synthwave / Retrowave official YouTube playlist
-            src="https://www.youtube.com/embed/videoseries?list=RDCLAK5uy_kQy94y7qX06_fP0U3y9m-w1O3K02X4-G4" 
+            src="https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1&mute=0" 
             title="YouTube video player" 
             frameBorder="0" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
