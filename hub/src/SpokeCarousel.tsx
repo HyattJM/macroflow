@@ -65,7 +65,7 @@ interface SpokeCarouselProps {
 const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const totalItems = APPS.length;
-  const radius = 320; // Z-translation distance for the 3D cylinder
+  const radius = 450; // Z-translation distance for the 3D cylinder
   const angle = 360 / totalItems;
 
   useEffect(() => {
@@ -91,15 +91,14 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
     if (diff < -totalItems / 2) diff += totalItems;
 
     const isActive = diff === 0;
-    const isAdjacent = Math.abs(diff) === 1;
 
     return {
       rotateY: diff * angle,
       translateZ: radius,
-      opacity: isActive ? 1 : isAdjacent ? 0.7 : 0.3,
-      scale: isActive ? 1 : isAdjacent ? 0.85 : 0.7,
-      filter: isActive ? 'blur(0px)' : isAdjacent ? 'blur(2px)' : 'blur(6px)',
-      zIndex: isActive ? 10 : isAdjacent ? 5 : 1,
+      opacity: isActive ? 1 : 0.85, // Keep all cards highly visible
+      scale: isActive ? 1 : 0.85,
+      filter: isActive ? 'blur(0px)' : 'blur(0px)', // Remove blur so they are completely legible
+      zIndex: isActive ? 10 : 5 - Math.abs(diff),
     };
   };
 
