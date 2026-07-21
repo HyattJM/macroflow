@@ -9,7 +9,7 @@ const APPS = [
     icon: '💻',
     color: 'emerald-400',
     shadow: 'rgba(52,211,153,0.3)',
-    path: '/portfolio'
+    externalUrl: 'https://github.com/HyattJM'
   },
   {
     id: 'logic-layer',
@@ -18,7 +18,7 @@ const APPS = [
     icon: '⚙️',
     color: 'indigo-400',
     shadow: 'rgba(129,140,248,0.3)',
-    path: '/logic-layer'
+    externalUrl: 'https://github.com/HyattJM/logic-layer'
   },
   {
     id: 'metrix',
@@ -45,7 +45,7 @@ const APPS = [
     icon: '🤖',
     color: 'blue-500',
     shadow: 'rgba(59,130,246,0.3)',
-    path: '/bot-dashboard'
+    externalUrl: 'https://github.com/HyattJM/discord-bot'
   },
   {
     id: 'return-automator',
@@ -63,7 +63,7 @@ const APPS = [
     icon: '📚',
     color: 'amber-500',
     shadow: 'rgba(245,158,11,0.3)',
-    path: '/rare-finds'
+    externalUrl: 'https://github.com/HyattJM/CS491-Bookstore-Product'
   }
 ];
 
@@ -156,7 +156,11 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
                   if (!isActive) {
                     setActiveIndex(index);
                   } else {
-                    triggerWarpTo(app.path);
+                    if (app.externalUrl) {
+                      window.open(app.externalUrl, '_blank');
+                    } else if (app.path) {
+                      triggerWarpTo(app.path);
+                    }
                   }
                 }}
               >
