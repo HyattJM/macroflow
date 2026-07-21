@@ -100,21 +100,26 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
     if (diff < -totalItems / 2) diff += totalItems;
 
     const isActive = diff === 0;
+    
+    // Spread them out horizontally into a fanned stack
+    const xOffset = diff * 140; // pixels spread
+    const yOffset = Math.abs(diff) * 20; // arch downwards
+    const rotation = diff * 8; // degrees fan
 
     return {
-      rotateY: diff * angle,
-      translateZ: radius,
-      opacity: isActive ? 1 : 0.85, // Keep all cards highly visible
-      scale: isActive ? 1 : 0.85,
-      filter: isActive ? 'blur(0px)' : 'blur(0px)', // Remove blur so they are completely legible
-      zIndex: isActive ? 10 : 5 - Math.abs(diff),
+      x: xOffset,
+      y: yOffset,
+      rotateZ: rotation,
+      scale: isActive ? 1.05 : 1 - Math.abs(diff) * 0.1,
+      zIndex: 10 - Math.abs(diff),
+      opacity: isActive ? 1 : 1 - Math.abs(diff) * 0.15,
     };
   };
 
   const activeApp = APPS[activeIndex];
 
   return (
-    <div className="relative w-full h-[50vh] min-h-[500px] flex flex-col items-center justify-center overflow-visible perspective-[1200px] mt-10">
+    <div className="relative w-full h-[50vh] min-h-[500px] flex flex-col items-center justify-center overflow-visible mt-10">
       
       {/* Background Ambient Glow */}
       <div 
@@ -122,13 +127,10 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
         style={{ backgroundColor: activeApp.shadow.replace('0.3', '1') }}
       />
 
-      {/* 3D Spoke Container */}
-      <div className="relative w-[300px] h-[400px]" style={{ transformStyle: 'preserve-3d' }}>
+      {/* 2D Fanned Stack Container */}
+      <div className="relative w-full max-w-5xl h-[400px]">
         <motion.div 
-          className="absolute w-full h-full cursor-grab active:cursor-grabbing"
-          style={{ transformStyle: 'preserve-3d' }}
-          animate={{ rotateY: -activeIndex * angle }}
-          transition={{ type: 'spring', stiffness: 50, damping: 20, mass: 1.5 }}
+          className="absolute w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing"
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.2}
@@ -141,17 +143,18 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
             return (
               <motion.div
                 key={app.id}
-                className="absolute top-1/2 left-1/2 w-[280px] h-[360px] -mt-[180px] -ml-[140px] rounded-2xl flex flex-col items-center justify-center transition-all duration-700"
+                className="absolute top-1/2 left-1/2 w-[280px] h-[360px] -mt-[180px] -ml-[140px] rounded-2xl flex flex-col items-center justify-center"
                 style={{
-                  transformStyle: 'preserve-3d',
-                  // The physical rotation and push out from the center
-                  transform: `rotateY(${style.rotateY}deg) translateZ(${style.translateZ}px)`,
-                  opacity: style.opacity,
-                  filter: style.filter,
                   zIndex: style.zIndex,
                 }}
-                animate={{ scale: style.scale }}
-                transition={{ duration: 0.7 }}
+                animate={{ 
+                  x: style.x,
+                  y: style.y,
+                  rotate: style.rotateZ,
+                  scale: style.scale,
+                  opacity: style.opacity
+                }}
+                transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                 onClick={() => {
                   if (!isActive) {
                     setActiveIndex(index);
@@ -169,8 +172,6 @@ const SpokeCarousel: React.FC<SpokeCarouselProps> = ({ triggerWarpTo }) => {
                   className={`w-full h-full rounded-2xl border flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-xl transition-all duration-700 shadow-2xl ${isActive ? 'border-' + app.color.split('-')[0] + '-500 cursor-pointer hover:bg-zinc-900/90' : 'border-zinc-800'}`}
                   style={{
                     boxShadow: isActive ? `0 0 40px ${app.shadow}` : 'none',
-                    // The glossy floor reflection
-                    WebkitBoxReflect: isActive ? 'below 2px linear-gradient(transparent 70%, rgba(0,0,0,0.5))' : 'none'
                   }}
                 >
                   <div className="text-8xl mb-6 drop-shadow-2xl">{app.icon}</div>
