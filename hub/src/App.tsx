@@ -403,7 +403,7 @@ function AppContent() {
                   &larr; Return to Hub
                 </button>
                 <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden">
-                  <iframe src="https://return-automator-live-24-production.up.railway.app" className="w-full h-full border-0" title="Return Automator Live" />
+                  <iframe src="https://returnautomator.com" className="w-full h-full border-0" title="Return Automator Live" />
                 </div>
               </div>
             } />
