@@ -369,7 +369,7 @@ function AppContent() {
                   &larr; Return to Hub
                 </button>
                 <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden">
-                  <iframe src="http://localhost:8081" className="w-full h-full border-0" title="Metrix Platform Live" />
+                  <iframe src="https://metrix-live-24-production.up.railway.app" className="w-full h-full border-0" title="Metrix Platform Live" />
                 </div>
               </div>
             } />
@@ -380,7 +380,7 @@ function AppContent() {
                   &larr; Return to Hub
                 </button>
                 <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden">
-                  <iframe src="http://localhost:5174" className="w-full h-full border-0" title="Movie App Live" />
+                  <iframe src="https://movie-app-live-24-production.up.railway.app" className="w-full h-full border-0" title="Movie App Live" />
                 </div>
               </div>
             } />
