@@ -449,7 +449,7 @@ function AppContent() {
             } />
             
             <Route path="/bot-dashboard" element={<GithubShuttleRoute triggerWarpTo={triggerWarpTo} repoUrl="https://github.com/HyattJM/discord-bot" repoName="Discord Bot" />} />
-            <Route path="/rare-finds" element={<GithubShuttleRoute triggerWarpTo={triggerWarpTo} repoUrl="https://github.com/HyattJM/CS491-Rare-Finds" repoName="Rare Finds Bookstore" />} />
+            <Route path="/rare-finds" element={<GithubShuttleRoute triggerWarpTo={triggerWarpTo} repoUrl="https://github.com/HyattJM/CS491-Bookstore-Product" repoName="Rare Finds Bookstore" />} />
             
             <Route path="/return-automator" element={
               <div className="w-full h-full flex flex-col relative">
