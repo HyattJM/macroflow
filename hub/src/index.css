@@ -21,8 +21,10 @@ html, body, #root {
   height: 100%;
   overflow: hidden;
   background-color: #0f172a;
+  font-family: 'Space Grotesk', sans-serif;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  @apply font-heading tracking-wide;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.025em;
 }
