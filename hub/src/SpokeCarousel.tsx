@@ -10,7 +10,7 @@ const APPS = [
     icon: '💻',
     color: 'emerald-400',
     shadow: 'rgba(52,211,153,0.3)',
-    externalUrl: 'https://github.com/HyattJM'
+    path: '/portfolio'
   },
   {
     id: 'logic-layer',

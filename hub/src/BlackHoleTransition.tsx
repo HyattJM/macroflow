@@ -27,6 +27,9 @@ const BlackHoleTransition: React.FC<BlackHoleTransitionProps> = ({ isOpen, onTra
       animState.current = 1;
       targetProgress.current = 1; // Grow to 1
       hasTriggeredComplete.current = false;
+      if (canvasRef.current) {
+        canvasRef.current.className = "fixed top-0 left-0 w-full h-full z-50 opacity-100 pointer-events-auto transition-opacity duration-300";
+      }
     } else if (!isOpen && animState.current > 0) {
       animState.current = 3;
       targetProgress.current = 0; // Recede to 0
@@ -91,6 +94,9 @@ const BlackHoleTransition: React.FC<BlackHoleTransitionProps> = ({ isOpen, onTra
       if (animState.current === 3 && progress.current < 0.01) {
         progress.current = 0;
         animState.current = 0; // Idle
+        if (canvasRef.current) {
+          canvasRef.current.className = "fixed top-0 left-0 w-full h-full z-50 opacity-0 pointer-events-none transition-opacity duration-300";
+        }
       }
 
       // If completely idle, don't clear or draw (keep transparent)
@@ -171,13 +177,11 @@ const BlackHoleTransition: React.FC<BlackHoleTransitionProps> = ({ isOpen, onTra
     };
   }, []); // Remove onTransitionComplete from dependencies!
 
-  // Use CSS pointer-events to prevent clicks when transition is idle, but block them during transition
-  const isActive = isOpen || progress.current > 0.05;
-  
+  // Initialize with pointer-events-none so it doesn't block initially
   return (
     <canvas 
       ref={canvasRef} 
-      className={`fixed top-0 left-0 w-full h-full z-50 transition-opacity duration-300 ${isActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} 
+      className={`fixed top-0 left-0 w-full h-full z-50 transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} 
     />
   );
 };

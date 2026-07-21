@@ -9,6 +9,9 @@ import AlienSpawnEffect from './AlienSpawnEffect';
 import SpokeCarousel from './SpokeCarousel';
 import VirtualLandscape from './VirtualLandscape';
 import YouTubeMusicWidget from './YouTubeMusicWidget';
+
+import GithubReadmeViewer from './GithubReadmeViewer';
+
 function DynamicAppIframe() {
   const { repoName } = useParams();
   const navigate = useNavigate();
@@ -33,7 +36,7 @@ function DynamicAppIframe() {
   );
 }
 
-function GithubSidebarSection() {
+function GithubSidebarSection({ triggerWarpTo }: { triggerWarpTo: (path: string) => void }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [repos, setRepos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -92,23 +95,21 @@ function GithubSidebarSection() {
             <div className="text-slate-500 text-xs italic py-2 px-3">Initializing uplink...</div>
           ) : (
             repos.map((repo) => (
-              <a 
+              <button 
                 key={repo.id}
-                href={repo.html_url}
-                target="_blank"
-                rel="noreferrer"
-                className="group flex flex-col gap-1 p-3 rounded-lg bg-zinc-950/50 hover:bg-emerald-950/30 border border-slate-800/50 hover:border-emerald-500/50 transition-all cursor-pointer shadow-lg"
+                onClick={() => triggerWarpTo(`/readme/${repo.name}`)}
+                className="group flex flex-col gap-1 p-3 rounded-lg bg-zinc-950/50 hover:bg-emerald-950/30 border border-slate-800/50 hover:border-emerald-500/50 transition-all cursor-pointer shadow-lg w-full text-left"
               >
-                <div className="text-slate-300 group-hover:text-emerald-400 text-sm font-bold truncate transition-colors flex items-center justify-between">
+                <div className="text-slate-300 group-hover:text-emerald-400 text-sm font-bold truncate transition-colors flex items-center justify-between w-full">
                   {repo.name}
-                  <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+                  <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </div>
                 {repo.description && (
                   <div className="text-slate-500 text-[10px] line-clamp-2 leading-snug">
                     {repo.description}
                   </div>
                 )}
-              </a>
+              </button>
             ))
           )}
         </div>
@@ -117,6 +118,14 @@ function GithubSidebarSection() {
   );
 }
 
+const sidebarItems = [
+  { path: '/', label: 'Central Hub', icon: '🌌' },
+  { path: '/portfolio', label: 'Developer Portfolio', icon: '💻' },
+  { path: '/metrix', label: 'Metrix Platform', icon: '📊' },
+  { path: '/movie-app', label: 'Movie App', icon: '🎬' },
+  { path: '/return-automator', label: 'Return Automator', icon: '📦' },
+  { path: '/embed/discord-bot', label: 'Discord Bot', icon: '🤖' }
+];
 
 
 function AppContent() {
@@ -225,7 +234,7 @@ function AppContent() {
       
       {/* Overlay Widgets */}
       {hasStarted && (
-        <div className="hidden md:block">
+        <div className="hidden md:block absolute inset-0 pointer-events-none z-50">
           <DiscordWidget />
           <YouTubeMusicWidget />
           <IosBootTerminal />
@@ -280,16 +289,7 @@ function AppContent() {
           </div>
         </div>
         <nav className="flex-1 p-4 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
-          {[
-            { path: '/', icon: '', label: 'Hub' },
-            { path: '/embed/mk-portfolio', icon: '💻', label: 'Portfolio' },
-            { path: '/embed/LogicLayerSupply', icon: '⚙️', label: 'Logic Layer' },
-            { path: '/metrix', icon: '📊', label: 'Metrix Platform' },
-            { path: '/movie-app', icon: '🎬', label: 'Movie App' },
-            { path: '/embed/discord-bot', icon: '🤖', label: 'Discord Bot' },
-            { path: '/return-automator', icon: '📦', label: 'Return Automator' },
-            { path: '/embed/CS491-Bookstore-Product', icon: '📚', label: 'Rare Finds' },
-          ].map((item) => (
+          {sidebarItems.map((item) => (
             <button 
               key={item.path}
               onClick={() => {
@@ -306,7 +306,7 @@ function AppContent() {
             </button>
           ))}
           
-          <GithubSidebarSection />
+          <GithubSidebarSection triggerWarpTo={triggerWarpTo} />
         </nav>
         <div className="p-6 text-xs text-slate-600 font-mono">v1.0.0</div>
       </aside>
@@ -384,6 +384,16 @@ function AppContent() {
                 </div>
               </div>
             } />
+            <Route path="/portfolio" element={
+              <div className="w-full h-full flex flex-col relative">
+                <button onClick={() => triggerWarpTo('/')} className="absolute top-6 right-6 z-50 px-6 py-2 bg-emerald-500/80 text-white border border-emerald-400 rounded-full font-bold tracking-widest hover:bg-emerald-600 uppercase text-sm cursor-pointer shadow-2xl backdrop-blur-md">
+                  &larr; Return to Hub
+                </button>
+                <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden">
+                  <iframe src="http://localhost:5177" className="w-full h-full border-0" title="MK Portfolio Local" />
+                </div>
+              </div>
+            } />
             
             <Route path="/return-automator" element={
               <div className="w-full h-full flex flex-col relative">
@@ -391,10 +401,11 @@ function AppContent() {
                   &larr; Return to Hub
                 </button>
                 <div className="flex-1 w-full h-full bg-zinc-950 overflow-hidden">
-                  <iframe src="https://returnautomator.com" className="w-full h-full border-0" title="Return Automator Live" />
+                  <iframe src="http://localhost:3001" className="w-full h-full border-0" title="Return Automator Local" />
                 </div>
               </div>
             } />
+            <Route path="/readme/:repoName" element={<GithubReadmeViewer />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
