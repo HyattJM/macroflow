@@ -11,6 +11,7 @@ import VirtualLandscape from './VirtualLandscape';
 import YouTubeMusicWidget from './YouTubeMusicWidget';
 
 import GithubReadmeViewer from './GithubReadmeViewer';
+import RareFindsSplitView from './RareFindsSplitView';
 
 function DynamicAppIframe() {
   const { repoName } = useParams();
@@ -124,6 +125,7 @@ const sidebarItems = [
   { path: '/metrix', label: 'Metrix Platform', icon: '📊' },
   { path: '/movie-app', label: 'Movie App', icon: '🎬' },
   { path: '/return-automator', label: 'Return Automator', icon: '📦' },
+  { path: '/rarefinds', label: 'Rare Finds Bookstore', icon: '📚' },
   { path: '/embed/discord-bot', label: 'Discord Bot', icon: '🤖' }
 ];
 
@@ -405,6 +407,7 @@ function AppContent() {
                 </div>
               </div>
             } />
+            <Route path="/rarefinds" element={<RareFindsSplitView />} />
             <Route path="/readme/:repoName" element={<GithubReadmeViewer />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
